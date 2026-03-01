@@ -1,4 +1,15 @@
+import { useState } from "react";
+import PageTabs from "../components/PageTabs";
+
+const STAFF_TABS = [
+  { key: "directory", label: "Directory" },
+  { key: "shifts", label: "Shifts" },
+  { key: "assignments", label: "Assignments" }
+];
+
 function StaffPage({ loading, error }) {
+  const [activeTab, setActiveTab] = useState("directory");
+
   if (loading) {
     return (
       <section className="card">
@@ -16,19 +27,59 @@ function StaffPage({ loading, error }) {
   }
 
   return (
-    <section className="staff-grid">
-      <article className="card">
-        <h3>Staff Directory</h3>
-        <p>Staff roster page is now separated and ready for API integration.</p>
-      </article>
-      <article className="card">
-        <h3>Shift Board</h3>
-        <p>Planned: upcoming shifts, role coverage, and handoff notes.</p>
-      </article>
-      <article className="card">
-        <h3>Task Assignments</h3>
-        <p>Planned: medication rounds, follow-ups, and escalation ownership.</p>
-      </article>
+    <section className="page-shell">
+      <PageTabs tabs={STAFF_TABS} activeTab={activeTab} onChange={setActiveTab} />
+
+      {activeTab === "directory" && (
+        <section className="staff-grid">
+          <article className="card">
+            <h3>Registered Nurses</h3>
+            <p>Planned: contact cards, credentials, and active coverage windows.</p>
+          </article>
+          <article className="card">
+            <h3>Care Aides</h3>
+            <p>Planned: shift assignments, certifications, and handoff ownership.</p>
+          </article>
+          <article className="card">
+            <h3>On-Call Contacts</h3>
+            <p>Planned: emergency escalation chain and replacement pool.</p>
+          </article>
+        </section>
+      )}
+
+      {activeTab === "shifts" && (
+        <section className="staff-grid">
+          <article className="card">
+            <h3>Morning Shift</h3>
+            <p>Planned: med rounds, vitals checks, and breakfast observation tasks.</p>
+          </article>
+          <article className="card">
+            <h3>Evening Shift</h3>
+            <p>Planned: administration checks, follow-ups, and end-of-day logs.</p>
+          </article>
+          <article className="card">
+            <h3>Night Shift</h3>
+            <p>Planned: incident handling and overnight monitoring coverage.</p>
+          </article>
+        </section>
+      )}
+
+      {activeTab === "assignments" && (
+        <section className="staff-grid">
+          <article className="card">
+            <h3>Medication Tasks</h3>
+            <p>Planned: who is assigned to each medication route and pass window.</p>
+          </article>
+          <article className="card">
+            <h3>Follow-Up Tasks</h3>
+            <p>Planned: flagged observations and required follow-through owners.</p>
+          </article>
+          <article className="card">
+            <h3>Escalation Tasks</h3>
+            <p>Planned: unresolved alerts and SLA tracking by role.</p>
+          </article>
+        </section>
+      )}
     </section>
   );
 }

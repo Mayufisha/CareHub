@@ -152,6 +152,32 @@ body {
   align-content: start;
 }
 
+.page-shell {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.page-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.page-tabs button {
+  border: 1px solid #c9dde4;
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  background: #ffffff;
+  color: #17414d;
+  cursor: pointer;
+}
+
+.page-tabs button.active {
+  border-color: #0f6278;
+  background: #0f6278;
+  color: #ffffff;
+}
+
 .card {
   background: #fff;
   border-radius: 14px;
