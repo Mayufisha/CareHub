@@ -1,7 +1,7 @@
 :root {
   font-family: "Segoe UI", Tahoma, sans-serif;
-  color: #17313b;
-  background: #edf4f7;
+  color: #15343f;
+  background: #edf5f7;
 }
 
 * {
@@ -12,17 +12,117 @@ body {
   margin: 0;
 }
 
-.app {
+.app-shell {
   min-height: 100vh;
   display: grid;
-  place-items: center;
+  grid-template-columns: 260px 1fr;
+}
+
+.sidebar {
+  background: linear-gradient(180deg, #0f6278, #0b4151);
+  color: #f0f8fa;
+  padding: 1.2rem;
+}
+
+.sidebar h1 {
+  margin-top: 0;
+  margin-bottom: 0.3rem;
+}
+
+.sidebar p {
+  margin-top: 0;
+  opacity: 0.9;
+}
+
+.sidebar nav {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.sidebar button {
+  border: 0;
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.14);
+  color: #f0f8fa;
+  cursor: pointer;
+}
+
+.sidebar button.active {
+  background: #f5c341;
+  color: #17343f;
+  font-weight: 700;
+}
+
+.content {
   padding: 1rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.topbar h2 {
+  margin: 0;
+}
+
+.topbar button {
+  border: 0;
+  border-radius: 10px;
+  padding: 0.55rem 0.85rem;
+  background: #0f6278;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.8rem;
+  align-content: start;
 }
 
 .card {
-  width: min(680px, 100%);
   background: #fff;
   border-radius: 14px;
   padding: 1.2rem;
-  box-shadow: 0 12px 30px rgba(17, 49, 59, 0.1);
+  box-shadow: 0 10px 24px rgba(17, 49, 59, 0.08);
+}
+
+.metric strong {
+  font-size: 1.9rem;
+}
+
+.warning strong {
+  color: #a86800;
+}
+
+.error {
+  border: 1px solid #f0a6a6;
+  color: #8c2c2c;
+  background: #fff6f6;
+}
+
+.list-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #eef4f6;
+}
+
+.list-row:last-child {
+  border-bottom: 0;
+}
+
+@media (max-width: 920px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
 }
