@@ -698,6 +698,11 @@ function App() {
             </button>
           ))}
         </nav>
+        <div className="sidebar-footer">
+          <button type="button" className="sidebar-logout" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
       </aside>
       {sidebarOpen && <button className="backdrop" onClick={() => setSidebarOpen(false)} />}
 
@@ -724,7 +729,6 @@ function App() {
               Export CSV
             </button>
           )}
-          <button onClick={handleLogout}>Logout</button>
         </header>
         {renderActivePage()}
       </main>

@@ -81,6 +81,16 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<CareHubDbContext>();
     await db.Database.MigrateAsync();
+    await db.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS "AppUsers" (
+            "Username" text NOT NULL,
+            "Password" text NOT NULL,
+            "Role" text NOT NULL,
+            "DisplayName" text NOT NULL,
+            "ResidentId" text NULL,
+            CONSTRAINT "PK_AppUsers" PRIMARY KEY ("Username")
+        );
+    """);
 }
 await DataSeedService.SeedFromSharedJsonAsync(app.Services, app.Configuration, app.Environment);
 

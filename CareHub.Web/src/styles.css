@@ -10,6 +10,13 @@
 
 body {
   margin: 0;
+  overflow: hidden;
+}
+
+html,
+body,
+#root {
+  height: 100%;
 }
 
 .auth-shell {
@@ -56,15 +63,22 @@ body {
 }
 
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
   display: grid;
   grid-template-columns: 260px 1fr;
+  overflow: hidden;
 }
 
 .sidebar {
   background: linear-gradient(180deg, #0f6278, #0b4151);
   color: #f0f8fa;
   padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overflow-y: auto;
 }
 
 .sidebar h1 {
@@ -81,6 +95,23 @@ body {
   display: grid;
   gap: 0.5rem;
   margin-top: 1rem;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 0.8rem;
+}
+
+.sidebar-logout {
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.18);
+  color: #f0f8fa;
+  cursor: pointer;
+  font-weight: 700;
 }
 
 .sidebar button {
@@ -128,6 +159,10 @@ body {
   padding: 1rem;
   display: grid;
   gap: 0.8rem;
+  min-height: 0;
+  overflow: auto;
+  align-content: start;
+  grid-auto-rows: max-content;
 }
 
 .topbar {
@@ -202,17 +237,27 @@ body {
 
 .page-tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  align-items: center;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
 }
 
 .page-tabs button {
   border: 1px solid #c9dde4;
-  border-radius: 999px;
-  padding: 0.4rem 0.75rem;
+  border-radius: 12px;
+  height: 2.25rem;
+  padding: 0 0.95rem;
   background: #ffffff;
   color: #17414d;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  line-height: 1;
+  flex: 0 0 auto;
 }
 
 .page-tabs button.active {
@@ -498,6 +543,7 @@ body {
 @media (max-width: 920px) {
   .app-shell {
     grid-template-columns: 1fr;
+    height: 100vh;
   }
 
   .sidebar {
