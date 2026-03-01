@@ -431,6 +431,7 @@ function App() {
           error={error}
           displayedInventory={displayedInventory}
           pagedInventory={pagedInventory}
+          lowStock={lowStock}
           currentPage={currentPage}
           pageSize={pageSize}
           renderSectionTools={renderSectionTools}

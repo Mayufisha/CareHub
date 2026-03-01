@@ -1,4 +1,12 @@
+import { useState } from "react";
+import PageTabs from "../components/PageTabs";
 import StatCard from "../components/StatCard";
+
+const DASHBOARD_TABS = [
+  { key: "overview", label: "Overview" },
+  { key: "operations", label: "Operations" },
+  { key: "activity", label: "Activity" }
+];
 
 function DashboardPage({
   loading,
@@ -14,13 +22,21 @@ function DashboardPage({
   recentObservations,
   onNavigate
 }) {
-  return (
-    <section className="dashboard-grid">
-      {loading && <article className="card">Loading dashboard...</article>}
-      {error && <article className="card error">{error}</article>}
+  const [activeTab, setActiveTab] = useState("overview");
 
-      {!loading && !error && (
-        <>
+  if (loading) {
+    return <article className="card">Loading dashboard...</article>;
+  }
+  if (error) {
+    return <article className="card error">{error}</article>;
+  }
+
+  return (
+    <section className="page-shell">
+      <PageTabs tabs={DASHBOARD_TABS} activeTab={activeTab} onChange={setActiveTab} />
+
+      {activeTab === "overview" && (
+        <section className="dashboard-grid">
           <StatCard title="Total Residents" value={residentsCount} />
           <StatCard title="Total Medications" value={medicationsCount} />
           <StatCard title="Observations Logged" value={observationsCount} />
@@ -31,7 +47,11 @@ function DashboardPage({
             caption={`${lowStockRate}% of medication records`}
           />
           <StatCard title="Occupied Rooms" value={occupiedRooms} />
+        </section>
+      )}
 
+      {activeTab === "operations" && (
+        <section className="dashboard-grid">
           <article className="card">
             <h3>Quick Actions</h3>
             <div className="action-row">
@@ -70,10 +90,14 @@ function DashboardPage({
               </button>
             )}
           </article>
+        </section>
+      )}
 
+      {activeTab === "activity" && (
+        <section className="dashboard-grid">
           <article className="card">
             <h3>Recent Observations</h3>
-            {recentObservations.slice(0, 5).map((obs) => (
+            {recentObservations.slice(0, 10).map((obs) => (
               <div key={obs.id} className="recent-row">
                 <span>{obs._summary}</span>
                 <small>{obs._timestamp}</small>
@@ -81,7 +105,7 @@ function DashboardPage({
             ))}
             {recentObservations.length === 0 && <p>No observations available.</p>}
           </article>
-        </>
+        </section>
       )}
     </section>
   );
