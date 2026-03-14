@@ -220,6 +220,9 @@ $tf/
 *.mm.*
 AutoTest.Net/
 
+## Secrets / local overrides
+appsettings.Development.json
+
 ## Misc
 ClientBin/
 .claude/
