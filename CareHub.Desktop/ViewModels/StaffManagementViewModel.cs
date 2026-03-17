@@ -16,7 +16,7 @@ namespace CareHub.ViewModels
         private readonly IStaffService _staffService;
 
         public ObservableCollection<StaffRecord> Staff { get; } = new();
-        public IList<string> Roles { get; } = new List<string> { "Admin", "Care", "Kitchen", "Facilities" };
+        public IList<string> Roles { get; } = new List<string> { "Admin", "Nurse", "General CareStaff", "Observer" };
 
         // ── Selection & mode ────────────────────────────────────────────────
 
@@ -140,7 +140,7 @@ namespace CareHub.ViewModels
 
         // ── Account ──────────────────────────────────────────────────────────
 
-        private string _role = "Care";
+        private string _role = "General CareStaff";
         public string Role { get => _role; set => SetProperty(ref _role, value); }
 
         private bool _isEnabled = true;
@@ -210,7 +210,7 @@ namespace CareHub.ViewModels
             FoodSafeCertified = Selected.Compliance?.FoodSafeCertified ?? false;
             FoodSafeExpiry   = Selected.Compliance?.FoodSafeExpiry   ?? "";
 
-            Role      = string.IsNullOrWhiteSpace(Selected.Role) ? "Care" : Selected.Role;
+            Role      = string.IsNullOrWhiteSpace(Selected.Role) ? "General CareStaff" : Selected.Role;
             IsEnabled = Selected.IsEnabled;
         }
 
@@ -231,7 +231,7 @@ namespace CareHub.ViewModels
             FirstAidExpiry   = "";
             FoodSafeCertified = false;
             FoodSafeExpiry   = "";
-            Role             = "Care";
+            Role             = "General CareStaff";
             IsEnabled        = true;
             Error            = "";
             IsEditing        = true;
@@ -277,7 +277,7 @@ namespace CareHub.ViewModels
                     EmploymentStatus = EmploymentStatus.Trim(),
                     HourlyWage       = HourlyWage,
                     ShiftPreference  = ShiftPreference.Trim(),
-                    Role             = string.IsNullOrWhiteSpace(Role) ? "Care" : Role,
+                    Role             = string.IsNullOrWhiteSpace(Role) ? "General CareStaff" : Role,
                     IsEnabled        = IsEnabled,
                     Compliance       = new StaffCompliance
                     {

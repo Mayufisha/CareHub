@@ -23,7 +23,7 @@ namespace CareHub.Models
             public StaffCompliance Compliance { get; set; } = new StaffCompliance();
 
             // Optional for Milestone 3 demo (won't break existing JSON)
-            public string Role { get; set; } = "Staff";                   // Admin / Staff
+            public string Role { get; set; } = "General CareStaff";       // Admin / Nurse / General CareStaff / Observer
             public bool IsEnabled { get; set; } = true;                   // Enable/Disable account
 
             public string StaffName => $"{StaffFName} {StaffLName}".Trim();

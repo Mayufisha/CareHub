@@ -17,10 +17,10 @@ const SECTIONS = [
 ];
 
 const ROLE_SECTIONS = {
-  Admin: ["Dashboard", "Residents", "Inventory", "Observations", "Staff"],
-  Staff: ["Dashboard", "Observations"],
+  Admin: ["Dashboard", "Residents", "Inventory", "Staff"],
+  Nurse: ["Dashboard", "Residents", "Inventory", "Observations"],
+  "General CareStaff": ["Dashboard", "Residents", "Observations"],
   Observer: ["Dashboard", "Residents", "Inventory", "Observations"],
-  Resident: ["Dashboard", "Residents", "Observations", "Staff"]
 };
 
 const EMPTY_GUID = "00000000-0000-0000-0000-000000000000";
@@ -164,10 +164,10 @@ function App() {
         setLoading(true);
         setError("");
         const role = authSession.role || "";
-        const canReadResidents = ["Admin", "Observer", "Resident"].includes(role);
-        const canReadInventory = ["Admin", "Observer", "Resident"].includes(role);
-        const canReadObservations = ["Admin", "Staff", "Observer", "Resident"].includes(role);
-        const canReadStaffList = ["Admin", "Observer"].includes(role);
+        const canReadResidents = ["Admin", "Nurse", "General CareStaff", "Observer"].includes(role);
+        const canReadInventory = ["Admin", "Nurse", "Observer"].includes(role);
+        const canReadObservations = ["Nurse", "General CareStaff", "Observer"].includes(role);
+        const canReadStaffList = ["Admin"].includes(role);
 
         const [resData, medData, obsData, staffData] = await Promise.all([
           canReadResidents ? api.get("/residents") : Promise.resolve([]),
@@ -195,7 +195,7 @@ function App() {
   }, [authSession]);
 
   const currentResident = useMemo(() => {
-    if (authSession?.role !== "Resident") {
+    if (authSession?.role !== "Observer") {
       return null;
     }
     return residents[0] || null;
@@ -379,7 +379,7 @@ function App() {
           ? `${displayedObservations.length} observations in current view`
       : activeSection === "Dashboard"
         ? `${lowStock.length} low stock alerts right now`
-        : authSession?.role === "Resident"
+        : authSession?.role === "Observer"
           ? "Your assigned care team details"
           : "Staff directory and planning workspace";
   const canExport =
@@ -696,7 +696,7 @@ function App() {
               {section.key === "Residents" && <small>{residents.length}</small>}
               {section.key === "Inventory" && <small>{medications.length}</small>}
               {section.key === "Observations" && <small>{observations.length}</small>}
-              {section.key === "Staff" && authSession.role !== "Resident" && (
+              {section.key === "Staff" && authSession.role !== "Observer" && (
                 <small>{staffMembers.length}</small>
               )}
               {section.key === "Dashboard" && lowStock.length > 0 && (

@@ -42,7 +42,7 @@ function StaffPage({
     );
   }
 
-  if (authRole === "Resident") {
+  if (authRole === "Observer") {
     return (
       <section className="card">
         <h3>My Assigned Care Team</h3>
@@ -137,7 +137,8 @@ function StaffPage({
                     }
                   >
                     <option value="Admin">Admin</option>
-                    <option value="Staff">Staff</option>
+                    <option value="Nurse">Nurse</option>
+                    <option value="General CareStaff">General CareStaff</option>
                     <option value="Observer">Observer</option>
                   </select>
                 </label>
