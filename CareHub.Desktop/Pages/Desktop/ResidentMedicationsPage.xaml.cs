@@ -3,7 +3,6 @@ using CareHub.Pages.UI;
 using CommunityToolkit.Maui.Views;
 using CareHub.Models;
 using CareHub.Services.Abstractions;
-using CareHub.Services.Remote;
 using CareHub.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -324,12 +323,15 @@ namespace CareHub.Pages.Desktop
             if (sender is not BindableObject bindable || bindable.BindingContext is not Medication med)
                 return;
 
-            var ai = MauiProgram.Services.GetService<AiApiService>();
+            var ai = MauiProgram.Services.GetService<IAiService>();
             if (ai == null)
             {
                 await DisplayAlert("Unavailable", "AI service is not configured.", "OK");
                 return;
             }
+
+            var btn = sender as VisualElement;
+            if (btn != null) { btn.IsEnabled = false; btn.Opacity = 0.5; }
 
             try
             {
@@ -348,6 +350,10 @@ namespace CareHub.Pages.Desktop
             catch (Exception ex)
             {
                 await DisplayAlert("AI Error", $"Could not get AI response: {ex.Message}", "OK");
+            }
+            finally
+            {
+                if (btn != null) { btn.IsEnabled = true; btn.Opacity = 1.0; }
             }
         }
 
