@@ -14,7 +14,7 @@ namespace CareHub.Api.Entities
         [Required]
         public Guid MarEntryId { get; set; }
 
-        public int ChangeQty { get; set; }  // Negative for deduction
+        public decimal ChangeQty { get; set; }  // Negative for deduction
 
         [MaxLength(50)]
         public string Unit { get; set; } = string.Empty;

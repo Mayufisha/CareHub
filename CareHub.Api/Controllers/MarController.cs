@@ -114,6 +114,9 @@ public sealed class MarController : ControllerBase
                     return Conflict($"Insufficient stock. Available: {freshMed.StockQuantity}, requested: {entry.DoseQuantity}.");
                 }
 
+                // Stock is tracked as integer units; round up fractional doses for inventory movement.
+                var stockDelta = (int)Math.Ceiling(entry.DoseQuantity);
+
                 _db.MarEntries.Add(entry);
 
                 _db.MedicationInventoryLedgers.Add(new MedicationInventoryLedger
@@ -126,7 +129,7 @@ public sealed class MarController : ControllerBase
                     CreatedAtUtc = now,
                 });
 
-                freshMed.StockQuantity -= entry.DoseQuantity;
+                freshMed.StockQuantity -= stockDelta;
 
                 await _db.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
@@ -187,7 +190,7 @@ public sealed class MarController : ControllerBase
                     return Conflict("Cannot void: no inventory ledger found for this entry.");
                 }
 
-                if (existingLedger.ChangeQty >= 0)
+                if (existingLedger.ChangeQty >= 0m)
                 {
                     await tx.RollbackAsync(ct);
                     return Conflict("Cannot void: inventory deduction already reversed.");
@@ -200,8 +203,9 @@ public sealed class MarController : ControllerBase
                     return Conflict("Cannot void: medication record not found.");
                 }
 
-                med.StockQuantity += entry.DoseQuantity;
-                existingLedger.ChangeQty = 0;
+                var stockDelta = (int)Math.Ceiling(entry.DoseQuantity);
+                med.StockQuantity += stockDelta;
+                existingLedger.ChangeQty = 0m;
                 existingLedger.Reason = "MAR_VOID_REVERSED";
             }
 

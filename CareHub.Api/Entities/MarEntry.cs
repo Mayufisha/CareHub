@@ -27,7 +27,7 @@ namespace CareHub.Api.Entities
         public string Status { get; set; } = string.Empty;
         // Allowed: Given / Refused / Held / Missed / NotAvailable
 
-        public int DoseQuantity { get; set; }
+        public decimal DoseQuantity { get; set; }
 
         [MaxLength(50)]
         public string DoseUnit { get; set; } = string.Empty;

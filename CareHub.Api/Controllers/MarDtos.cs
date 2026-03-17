@@ -18,8 +18,8 @@ public record CreateMarEntryRequest
     public string Status { get; init; } = string.Empty;
 
     [Required]
-    [Range(1, int.MaxValue, ErrorMessage = "DoseQuantity must be a positive integer.")]
-    public int DoseQuantity { get; init; }
+    [Range(typeof(decimal), "0.01", "1000000", ErrorMessage = "DoseQuantity must be greater than 0.")]
+    public decimal DoseQuantity { get; init; }
 
     [MaxLength(50)]
     public string DoseUnit { get; init; } = string.Empty;
@@ -69,7 +69,7 @@ public class MarReportLine
     public Guid MedicationId { get; set; }
     public string MedicationName { get; set; } = "";
     public string Status { get; set; } = "";
-    public int DoseQuantity { get; set; }
+    public decimal DoseQuantity { get; set; }
     public string DoseUnit { get; set; } = "";
     public DateTimeOffset? ScheduledForUtc { get; set; }
     public DateTimeOffset AdministeredAtUtc { get; set; }

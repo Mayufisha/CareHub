@@ -12,7 +12,7 @@ namespace CareHub.Desktop.Models
 
         public string Status { get; set; } = string.Empty;
 
-        public int DoseQuantity { get; set; }
+        public decimal DoseQuantity { get; set; }
         public string DoseUnit { get; set; } = string.Empty;
 
         public DateTimeOffset? ScheduledForUtc { get; set; }

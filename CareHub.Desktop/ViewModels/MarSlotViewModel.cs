@@ -15,7 +15,7 @@ public class MarSlotViewModel
 
     // Medication display
     public string MedicationName { get; set; } = "";
-    public int DoseQuantity { get; set; }
+    public decimal DoseQuantity { get; set; }
     public string DoseUnit { get; set; } = "";
 
     // MAR overlay (populated when a matching entry exists)
@@ -27,8 +27,8 @@ public class MarSlotViewModel
     // Display helpers
     public bool IsUnscheduled { get; set; }
 
-    public string DoseDisplay => DoseQuantity > 0
-        ? $"{DoseQuantity} {DoseUnit}".Trim()
+    public string DoseDisplay => DoseQuantity > 0m
+        ? $"{DoseQuantity:0.##} {DoseUnit}".Trim()
         : DoseUnit;
 
     public string TimeDisplay => IsUnscheduled
