@@ -19,16 +19,21 @@ public class MedicationApiService : IMedicationService
     {
         try
         {
-            return await _http.GetFromJsonAsync<List<Medication>>("api/medications")
-                   ?? new List<Medication>();
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new OfflineException("API unreachable (Load Medications).", ex);
+            using var resp = await _http.GetAsync("api/medications");
+
+            if (resp.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+                throw new UnauthorizedAccessException("Not authorized to load medications.");
+
+            resp.EnsureSuccessStatusCode();
+            return await resp.Content.ReadFromJsonAsync<List<Medication>>() ?? new List<Medication>();
         }
         catch (TaskCanceledException ex)
         {
             throw new OfflineException("API timeout (Load Medications).", ex);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is null)
+        {
+            throw new OfflineException("API unreachable (Load Medications).", ex);
         }
     }
 
@@ -57,13 +62,13 @@ public class MedicationApiService : IMedicationService
             var put = await _http.PutAsJsonAsync($"api/medications/{item.Id}", item);
             put.EnsureSuccessStatusCode();
         }
-        catch (HttpRequestException ex)
-        {
-            throw new OfflineException("API unreachable (Upsert Medication).", ex);
-        }
         catch (TaskCanceledException ex)
         {
             throw new OfflineException("API timeout (Upsert Medication).", ex);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is null)
+        {
+            throw new OfflineException("API unreachable (Upsert Medication).", ex);
         }
     }
 
@@ -83,13 +88,13 @@ public class MedicationApiService : IMedicationService
 
             resp.EnsureSuccessStatusCode();
         }
-        catch (HttpRequestException ex)
-        {
-            throw new OfflineException("API unreachable (Delete Medication).", ex);
-        }
         catch (TaskCanceledException ex)
         {
             throw new OfflineException("API timeout (Delete Medication).", ex);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is null)
+        {
+            throw new OfflineException("API unreachable (Delete Medication).", ex);
         }
     }
 
@@ -97,16 +102,21 @@ public class MedicationApiService : IMedicationService
     {
         try
         {
-            return await _http.GetFromJsonAsync<List<Medication>>("api/medications/lowstock")
-                   ?? new List<Medication>();
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new OfflineException("API unreachable (GetLowStock).", ex);
+            using var resp = await _http.GetAsync("api/medications/lowstock");
+
+            if (resp.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+                throw new UnauthorizedAccessException("Not authorized to load low-stock medications.");
+
+            resp.EnsureSuccessStatusCode();
+            return await resp.Content.ReadFromJsonAsync<List<Medication>>() ?? new List<Medication>();
         }
         catch (TaskCanceledException ex)
         {
             throw new OfflineException("API timeout (GetLowStock).", ex);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is null)
+        {
+            throw new OfflineException("API unreachable (GetLowStock).", ex);
         }
     }
 
@@ -122,13 +132,13 @@ public class MedicationApiService : IMedicationService
             var resp = await _http.PostAsync($"api/medications/{medicationId}/adjustStock?delta={delta}", content: null);
             resp.EnsureSuccessStatusCode();
         }
-        catch (HttpRequestException ex)
-        {
-            throw new OfflineException("API unreachable (AdjustStock).", ex);
-        }
         catch (TaskCanceledException ex)
         {
             throw new OfflineException("API timeout (AdjustStock).", ex);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is null)
+        {
+            throw new OfflineException("API unreachable (AdjustStock).", ex);
         }
     }
 }

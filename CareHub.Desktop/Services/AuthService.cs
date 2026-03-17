@@ -12,9 +12,9 @@ namespace CareHub.Services
         // Local fallback credentials (used when API is offline)
         private readonly List<Staff> _localStaff = new()
         {
-            new Staff { Username = "admin",     Password = "admin123",    StaffName = "System Admin",      Role = StaffRole.Admin },
-            new Staff { Username = "nurse1",    Password = "nurse123",    StaffName = "Nurse One",         Role = StaffRole.Nurse },
-            new Staff { Username = "carestaff1", Password = "care123",    StaffName = "Care Staff One",    Role = StaffRole.CareStaff }
+            new Staff { Username = "admin", Password = "admin123", StaffName = "System Admin", Role = StaffRole.Admin },
+            new Staff { Username = "nurse1", Password = "nurse123", StaffName = "Nurse One", Role = StaffRole.Nurse },
+            new Staff { Username = "carestaff1", Password = "care123", StaffName = "Care Staff One", Role = StaffRole.CareStaff }
         };
 
         public Staff? CurrentUser { get; private set; }
@@ -31,53 +31,51 @@ namespace CareHub.Services
         /// </summary>
         public async Task<bool> LoginAsync(string username, string password)
         {
-            // Try API login first
-            if (ConnectivityHelper.IsOnline())
+            // Always try API login first, even if cached connectivity state says "offline".
+            // This avoids local-only login (no token) when the API is actually reachable again.
+            try
             {
-                try
+                using var http = new HttpClient
                 {
-                    using var http = new HttpClient
+                    BaseAddress = new Uri(_apiBaseUrl),
+                    Timeout = TimeSpan.FromSeconds(8)
+                };
+
+                var payload = new { username, password };
+                var resp = await http.PostAsJsonAsync("api/auth/login", payload);
+
+                if (resp.IsSuccessStatusCode)
+                {
+                    var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+
+                    AccessToken = body.GetProperty("accessToken").GetString();
+                    var role = body.GetProperty("role").GetString() ?? "";
+                    var displayName = body.GetProperty("displayName").GetString() ?? username;
+
+                    // Observer accounts are not allowed to use Desktop.
+                    if (role.Equals("Observer", StringComparison.OrdinalIgnoreCase))
+                        return false;
+
+                    CurrentUser = new Staff
                     {
-                        BaseAddress = new Uri(_apiBaseUrl),
-                        Timeout = TimeSpan.FromSeconds(5)
+                        Username = username,
+                        Password = "", // don't store password
+                        StaffName = displayName,
+                        Role = MapApiRole(role)
                     };
 
-                    var payload = new { username, password };
-                    var resp = await http.PostAsJsonAsync("api/auth/login", payload);
-
-                    if (resp.IsSuccessStatusCode)
-                    {
-                        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
-
-                        AccessToken = body.GetProperty("accessToken").GetString();
-                        var role = body.GetProperty("role").GetString() ?? "";
-                        var displayName = body.GetProperty("displayName").GetString() ?? username;
-
-                        // Observer accounts are not allowed to use Desktop.
-                        if (role.Equals("Observer", StringComparison.OrdinalIgnoreCase))
-                            return false;
-
-                        CurrentUser = new Staff
-                        {
-                            Username = username,
-                            Password = "", // don't store password
-                            StaffName = displayName,
-                            Role = MapApiRole(role)
-                        };
-
-                        ConnectivityHelper.MarkOnline();
-                        return true;
-                    }
-
-                    // 401 = bad credentials — don't fall back to local
-                    if ((int)resp.StatusCode == 401)
-                        return false;
+                    ConnectivityHelper.MarkOnline();
+                    return true;
                 }
-                catch
-                {
-                    // Network error — fall through to local login
-                    ConnectivityHelper.MarkOffline();
-                }
+
+                // 401 = bad credentials, don't fall back to local.
+                if ((int)resp.StatusCode == 401)
+                    return false;
+            }
+            catch
+            {
+                // Network error, fall through to local login.
+                ConnectivityHelper.MarkOffline();
             }
 
             // Offline fallback: local credentials

@@ -90,27 +90,27 @@ namespace CareHub
             builder.Services.AddHttpClient<ResidentApiService>(client =>
             {
                 client.BaseAddress = apiBase;
-                client.Timeout = TimeSpan.FromSeconds(2);
+                client.Timeout = TimeSpan.FromSeconds(10);
             }).AddHttpMessageHandler<AuthTokenHandler>();
             builder.Services.AddHttpClient<MedicationApiService>(client =>
             {
                 client.BaseAddress = apiBase;
-                client.Timeout = TimeSpan.FromSeconds(2);
+                client.Timeout = TimeSpan.FromSeconds(10);
             }).AddHttpMessageHandler<AuthTokenHandler>();
             builder.Services.AddHttpClient<ObservationApiService>(client =>
             {
                 client.BaseAddress = apiBase;
-                client.Timeout = TimeSpan.FromSeconds(2);
+                client.Timeout = TimeSpan.FromSeconds(10);
             }).AddHttpMessageHandler<AuthTokenHandler>();
             builder.Services.AddHttpClient<MarApiService>(client =>
             {
                 client.BaseAddress = apiBase;
-                client.Timeout = TimeSpan.FromSeconds(2);
+                client.Timeout = TimeSpan.FromSeconds(10);
             }).AddHttpMessageHandler<AuthTokenHandler>();
             builder.Services.AddHttpClient<MedicationOrderApiService>(client =>
             {
                 client.BaseAddress = apiBase;
-                client.Timeout = TimeSpan.FromSeconds(2);
+                client.Timeout = TimeSpan.FromSeconds(10);
             }).AddHttpMessageHandler<AuthTokenHandler>();
             builder.Services.AddHttpClient<AiApiService>(client =>
             {

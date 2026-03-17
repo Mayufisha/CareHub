@@ -19,16 +19,21 @@ public class ResidentApiService : IResidentService
     {
         try
         {
-            return await _http.GetFromJsonAsync<List<Resident>>("api/residents")
-                   ?? new List<Resident>();
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new OfflineException("API unreachable (Load Residents).", ex);
+            using var resp = await _http.GetAsync("api/residents");
+
+            if (resp.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+                throw new UnauthorizedAccessException("Not authorized to load residents.");
+
+            resp.EnsureSuccessStatusCode();
+            return await resp.Content.ReadFromJsonAsync<List<Resident>>() ?? new List<Resident>();
         }
         catch (TaskCanceledException ex)
         {
             throw new OfflineException("API timeout (Load Residents).", ex);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is null)
+        {
+            throw new OfflineException("API unreachable (Load Residents).", ex);
         }
     }
 
@@ -53,13 +58,13 @@ public class ResidentApiService : IResidentService
             var put = await _http.PutAsJsonAsync($"api/residents/{item.Id}", item);
             put.EnsureSuccessStatusCode();
         }
-        catch (HttpRequestException ex)
-        {
-            throw new OfflineException("API unreachable (Upsert Resident).", ex);
-        }
         catch (TaskCanceledException ex)
         {
             throw new OfflineException("API timeout (Upsert Resident).", ex);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is null)
+        {
+            throw new OfflineException("API unreachable (Upsert Resident).", ex);
         }
     }
 
@@ -79,13 +84,13 @@ public class ResidentApiService : IResidentService
 
             resp.EnsureSuccessStatusCode();
         }
-        catch (HttpRequestException ex)
-        {
-            throw new OfflineException("API unreachable (Delete Resident).", ex);
-        }
         catch (TaskCanceledException ex)
         {
             throw new OfflineException("API timeout (Delete Resident).", ex);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is null)
+        {
+            throw new OfflineException("API unreachable (Delete Resident).", ex);
         }
     }
 }

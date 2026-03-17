@@ -39,46 +39,44 @@ public class ResidentService : IResidentService
                 var apiItems = await _apiRes.LoadAsync();
                 ConnectivityHelper.MarkOnline();
 
-                var pending = await _queue.GetAllAsync();
-                bool hasPending = pending.Any(x => x.EntityType == "Resident");
+                // Merge: keep local-only items that are not in the API yet.
+                var localItems = await _localRes.LoadAsync();
+                var apiIds = new HashSet<Guid>(apiItems.Select(r => r.Id));
+                var localOnly = localItems.Where(r => !apiIds.Contains(r.Id)).ToList();
 
-                if (!hasPending)
+                if (localOnly.Count > 0)
                 {
-                    // Merge: keep local-only items that aren't in the API yet
-                    var localItems = await _localRes.LoadAsync();
-                    var apiIds = new HashSet<Guid>(apiItems.Select(r => r.Id));
-                    var localOnly = localItems.Where(r => !apiIds.Contains(r.Id)).ToList();
+                    // Build lookup by (FirstName, LastName, DOB) to avoid duplicates
+                    var apiKeys = new HashSet<string>(
+                        apiItems.Select(r => $"{(r.ResidentFName ?? "").ToLowerInvariant()}|{(r.ResidentLName ?? "").ToLowerInvariant()}|{r.DateOfBirth}"),
+                        StringComparer.Ordinal);
 
-                    if (localOnly.Count > 0)
+                    foreach (var resident in localOnly)
                     {
-                        // Build lookup by (FirstName, LastName, DOB) to avoid duplicates
-                        var apiKeys = new HashSet<string>(
-                            apiItems.Select(r => $"{(r.ResidentFName ?? "").ToLowerInvariant()}|{(r.ResidentLName ?? "").ToLowerInvariant()}|{r.DateOfBirth}"),
-                            StringComparer.Ordinal);
+                        var key = $"{(resident.ResidentFName ?? "").ToLowerInvariant()}|{(resident.ResidentLName ?? "").ToLowerInvariant()}|{resident.DateOfBirth}";
+                        if (apiKeys.Contains(key))
+                            continue;
 
-                        foreach (var resident in localOnly)
+                        try
                         {
-                            var key = $"{(resident.ResidentFName ?? "").ToLowerInvariant()}|{(resident.ResidentLName ?? "").ToLowerInvariant()}|{resident.DateOfBirth}";
-                            if (apiKeys.Contains(key))
-                                continue; // API already has this resident — skip to avoid duplicate
-
-                            try
-                            {
-                                await _apiRes.UpsertAsync(resident);
-                                apiItems.Add(resident);
-                            }
-                            catch { /* will retry next load */ }
+                            await _apiRes.UpsertAsync(resident);
+                            apiItems.Add(resident);
+                        }
+                        catch (OfflineException)
+                        {
+                            break;
+                        }
+                        catch
+                        {
+                            // Ignore non-offline upsert failures for local-only items.
                         }
                     }
-
-                    await _localRes.ReplaceAllAsync(apiItems);
-                    return apiItems;
                 }
 
-                // Pending changes exist — show local data (which includes unsync'd items)
-                return await _localRes.LoadAsync();
+                await _localRes.ReplaceAllAsync(apiItems);
+                return apiItems;
             }
-            catch
+            catch (OfflineException)
             {
                 ConnectivityHelper.MarkOffline();
                 return await _localRes.LoadAsync();
@@ -104,7 +102,7 @@ public class ResidentService : IResidentService
                 await _localRes.UpsertAsync(item);
                 return;
             }
-            catch
+            catch (OfflineException)
             {
                 ConnectivityHelper.MarkOffline();
             }
@@ -138,7 +136,7 @@ public class ResidentService : IResidentService
                 await _localRes.DeleteAsync(item);
                 return;
             }
-            catch
+            catch (OfflineException)
             {
                 ConnectivityHelper.MarkOffline();
             }

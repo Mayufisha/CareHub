@@ -35,46 +35,45 @@ public class ObservationService : IObservationService
                 var apiItems = await _apiObs.LoadAsync();
                 ConnectivityHelper.MarkOnline();
 
-                var pending = await _queue.GetAllAsync();
-                bool hasPending = pending.Any(x => x.EntityType == "Observation");
+                // Merge: keep local-only items that are not in the API yet.
+                var localItems = await _localObs.LoadAsync();
+                var apiIds = new HashSet<Guid>(apiItems.Select(o => o.Id));
+                var localOnly = localItems.Where(o => !apiIds.Contains(o.Id)).ToList();
 
-                if (!hasPending)
+                if (localOnly.Count > 0)
                 {
-                    // Merge: keep local-only items that aren't in the API yet
-                    var localItems = await _localObs.LoadAsync();
-                    var apiIds = new HashSet<Guid>(apiItems.Select(o => o.Id));
-                    var localOnly = localItems.Where(o => !apiIds.Contains(o.Id)).ToList();
+                    // Build lookup by (ResidentId, RecordedAt) to avoid duplicates
+                    var apiKeys = new HashSet<string>(
+                        apiItems.Select(o => $"{o.ResidentId}|{o.RecordedAt:O}"),
+                        StringComparer.Ordinal);
 
-                    if (localOnly.Count > 0)
+                    foreach (var obs in localOnly)
                     {
-                        // Build lookup by (ResidentId, RecordedAt) to avoid duplicates
-                        var apiKeys = new HashSet<string>(
-                            apiItems.Select(o => $"{o.ResidentId}|{o.RecordedAt:O}"),
-                            StringComparer.Ordinal);
+                        var key = $"{obs.ResidentId}|{obs.RecordedAt:O}";
+                        if (apiKeys.Contains(key))
+                            continue;
 
-                        foreach (var obs in localOnly)
+                        try
                         {
-                            var key = $"{obs.ResidentId}|{obs.RecordedAt:O}";
-                            if (apiKeys.Contains(key))
-                                continue; // API already has this observation — skip to avoid duplicate
-
-                            try
-                            {
-                                await _apiObs.AddAsync(obs);
-                                apiItems.Add(obs);
-                            }
-                            catch { /* will retry next load */ }
+                            await _apiObs.AddAsync(obs);
+                            apiItems.Add(obs);
+                        }
+                        catch (OfflineException)
+                        {
+                            break;
+                        }
+                        catch
+                        {
+                            // Ignore non-offline upsert failures for local-only items.
                         }
                     }
-
-                    _ = CacheLocallyAsync(apiItems);
-                    return apiItems;
                 }
 
-                // Pending changes exist — show local data (which includes unsync'd items)
-                return await _localObs.LoadAsync();
+                _ = CacheLocallyAsync(apiItems);
+                await _localObs.ReplaceAllAsync(apiItems);
+                return apiItems;
             }
-            catch
+            catch (OfflineException)
             {
                 ConnectivityHelper.MarkOffline();
                 return await _localObs.LoadAsync();
@@ -94,7 +93,7 @@ public class ObservationService : IObservationService
                 ConnectivityHelper.MarkOnline();
                 return items;
             }
-            catch
+            catch (OfflineException)
             {
                 ConnectivityHelper.MarkOffline();
                 return await _localObs.GetByResidentIdAsync(residentId);
@@ -111,7 +110,7 @@ public class ObservationService : IObservationService
             var json = JsonSerializer.Serialize(items, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(_cachePath, json);
         }
-        catch { /* best-effort cache */ }
+        catch { }
     }
 
     public Task ReplaceAllAsync(List<Observation> items) => _localObs.ReplaceAllAsync(items);
@@ -136,7 +135,7 @@ public class ObservationService : IObservationService
                 await _localObs.UpsertAsync(item);
                 return;
             }
-            catch
+            catch (OfflineException)
             {
                 ConnectivityHelper.MarkOffline();
             }
@@ -159,7 +158,7 @@ public class ObservationService : IObservationService
                 await _localObs.DeleteAsync(item);
                 return;
             }
-            catch
+            catch (OfflineException)
             {
                 ConnectivityHelper.MarkOffline();
             }
@@ -170,7 +169,6 @@ public class ObservationService : IObservationService
 
     public async Task AddAsync(Observation observation)
     {
-        // Always use UTC for recorded/observed timestamp
         observation.RecordedAt = DateTime.UtcNow;
 
         if (ConnectivityHelper.IsOnline())
@@ -182,13 +180,12 @@ public class ObservationService : IObservationService
                 await _localObs.AddAsync(observation);
                 return;
             }
-            catch
+            catch (OfflineException)
             {
                 ConnectivityHelper.MarkOffline();
             }
         }
 
-        // Offline (or API error): save local + enqueue
         await _localObs.AddAsync(observation);
 
         var payloadJson = JsonSerializer.Serialize(observation, _jsonOptions);
@@ -224,7 +221,6 @@ public class ObservationService : IObservationService
                     continue;
                 }
 
-                // Ensure UTC (safe)
                 obs.RecordedAt = DateTime.SpecifyKind(obs.RecordedAt, DateTimeKind.Utc);
 
                 switch (item.Operation)

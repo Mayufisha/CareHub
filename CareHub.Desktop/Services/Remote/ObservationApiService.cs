@@ -19,16 +19,21 @@ public sealed class ObservationApiService : IObservationService
     {
         try
         {
-            var items = await _http.GetFromJsonAsync<List<Observation>>("api/observations");
-            return items ?? new List<Observation>();
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new OfflineException("API unreachable (Load Observations).", ex);
+            using var resp = await _http.GetAsync("api/observations");
+
+            if (resp.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+                throw new UnauthorizedAccessException("Not authorized to load observations.");
+
+            resp.EnsureSuccessStatusCode();
+            return await resp.Content.ReadFromJsonAsync<List<Observation>>() ?? new List<Observation>();
         }
         catch (TaskCanceledException ex)
         {
             throw new OfflineException("API timeout (Load Observations).", ex);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is null)
+        {
+            throw new OfflineException("API unreachable (Load Observations).", ex);
         }
     }
 
@@ -36,17 +41,21 @@ public sealed class ObservationApiService : IObservationService
     {
         try
         {
-            var items = await _http.GetFromJsonAsync<List<Observation>>(
-                $"api/observations/by-resident/{residentId}");
-            return items ?? new List<Observation>();
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new OfflineException("API unreachable (Get Observations by resident).", ex);
+            using var resp = await _http.GetAsync($"api/observations/by-resident/{residentId}");
+
+            if (resp.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+                throw new UnauthorizedAccessException("Not authorized to load resident observations.");
+
+            resp.EnsureSuccessStatusCode();
+            return await resp.Content.ReadFromJsonAsync<List<Observation>>() ?? new List<Observation>();
         }
         catch (TaskCanceledException ex)
         {
             throw new OfflineException("API timeout (Get Observations by resident).", ex);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is null)
+        {
+            throw new OfflineException("API unreachable (Get Observations by resident).", ex);
         }
     }
 
@@ -90,14 +99,13 @@ public sealed class ObservationApiService : IObservationService
             var putResp = await _http.PutAsJsonAsync($"api/observations/{item.Id}", item);
             putResp.EnsureSuccessStatusCode();
         }
-        catch (HttpRequestException ex)
-        {
-            // This is exactly what happens when you stop the API for demo step #5.
-            throw new OfflineException("API unreachable (Upsert Observation). Queue this operation.", ex);
-        }
         catch (TaskCanceledException ex)
         {
             throw new OfflineException("API timeout (Upsert Observation). Queue this operation.", ex);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is null)
+        {
+            throw new OfflineException("API unreachable (Upsert Observation). Queue this operation.", ex);
         }
     }
 
@@ -115,13 +123,13 @@ public sealed class ObservationApiService : IObservationService
 
             resp.EnsureSuccessStatusCode();
         }
-        catch (HttpRequestException ex)
-        {
-            throw new OfflineException("API unreachable (Delete Observation). Queue this operation.", ex);
-        }
         catch (TaskCanceledException ex)
         {
             throw new OfflineException("API timeout (Delete Observation). Queue this operation.", ex);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is null)
+        {
+            throw new OfflineException("API unreachable (Delete Observation). Queue this operation.", ex);
         }
     }
 }

@@ -33,74 +33,71 @@ public class MedicationService : IMedicationService
                 var apiItems = await _apiMed.LoadAsync();
                 ConnectivityHelper.MarkOnline();
 
-                var pending = await _queue.GetAllAsync();
-                bool hasPending = pending.Any(x => x.EntityType == "Medication");
+                // Merge: keep local-only items that are not in the API yet.
+                var localItems = await _localMed.LoadAsync();
+                var apiIds = new HashSet<Guid>(apiItems.Select(m => m.Id));
+                var localOnly = localItems.Where(m => !apiIds.Contains(m.Id)).ToList();
 
-                if (!hasPending)
+                if (localOnly.Count > 0)
                 {
-                    // Merge: keep local-only items that aren't in the API yet
-                    var localItems = await _localMed.LoadAsync();
-                    var apiIds = new HashSet<Guid>(apiItems.Select(m => m.Id));
-                    var localOnly = localItems.Where(m => !apiIds.Contains(m.Id)).ToList();
+                    // Build a lookup of API items by (MedName, ResidentId) to avoid duplicates
+                    var apiKeys = new HashSet<string>(
+                        apiItems.Select(m => $"{(m.MedName ?? "").ToLowerInvariant()}|{m.ResidentId}"),
+                        StringComparer.Ordinal);
 
-                    if (localOnly.Count > 0)
+                    foreach (var med in localOnly)
                     {
-                        // Build a lookup of API items by (MedName, ResidentId) to avoid duplicates
-                        var apiKeys = new HashSet<string>(
-                            apiItems.Select(m => $"{(m.MedName ?? "").ToLowerInvariant()}|{m.ResidentId}"),
-                            StringComparer.Ordinal);
-
-                        foreach (var med in localOnly)
-                        {
-                            var key = $"{(med.MedName ?? "").ToLowerInvariant()}|{med.ResidentId}";
-                            if (apiKeys.Contains(key))
-                                continue; // API already has this med for this resident — skip to avoid duplicate
-
-                            try
-                            {
-                                await _apiMed.UpsertAsync(med);
-                                apiItems.Add(med);
-                            }
-                            catch { /* will retry next load */ }
-                        }
-                    }
-
-                    // Merge local fields into API items where API is missing them (non-blocking)
-                    var localById = localItems.ToDictionary(m => m.Id);
-                    var toSync = new List<Medication>();
-                    foreach (var apiItem in apiItems)
-                    {
-                        if (!localById.TryGetValue(apiItem.Id, out var localItem))
+                        var key = $"{(med.MedName ?? "").ToLowerInvariant()}|{med.ResidentId}";
+                        if (apiKeys.Contains(key))
                             continue;
 
-                        if (!apiItem.PurchaseDate.HasValue && localItem.PurchaseDate.HasValue)
+                        try
                         {
-                            apiItem.PurchaseDate = localItem.PurchaseDate;
-                            toSync.Add(apiItem);
+                            await _apiMed.UpsertAsync(med);
+                            apiItems.Add(med);
+                        }
+                        catch (OfflineException)
+                        {
+                            break;
+                        }
+                        catch
+                        {
+                            // Ignore non-offline upsert failures for local-only items.
                         }
                     }
-
-                    if (toSync.Count > 0)
-                    {
-                        // Push in background so LoadAsync returns immediately
-                        _ = Task.Run(async () =>
-                        {
-                            foreach (var med in toSync)
-                            {
-                                try { await _apiMed.UpsertAsync(med); }
-                                catch { break; }
-                            }
-                        });
-                    }
-
-                    await _localMed.ReplaceAllAsync(apiItems);
-                    return apiItems;
                 }
 
-                // Pending changes exist — show local data (which includes unsync'd items)
-                return await _localMed.LoadAsync();
+                // Merge local fields into API items where API is missing them (non-blocking)
+                var localById = localItems.ToDictionary(m => m.Id);
+                var toSync = new List<Medication>();
+                foreach (var apiItem in apiItems)
+                {
+                    if (!localById.TryGetValue(apiItem.Id, out var localItem))
+                        continue;
+
+                    if (!apiItem.PurchaseDate.HasValue && localItem.PurchaseDate.HasValue)
+                    {
+                        apiItem.PurchaseDate = localItem.PurchaseDate;
+                        toSync.Add(apiItem);
+                    }
+                }
+
+                if (toSync.Count > 0)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        foreach (var med in toSync)
+                        {
+                            try { await _apiMed.UpsertAsync(med); }
+                            catch { break; }
+                        }
+                    });
+                }
+
+                await _localMed.ReplaceAllAsync(apiItems);
+                return apiItems;
             }
-            catch
+            catch (OfflineException)
             {
                 ConnectivityHelper.MarkOffline();
                 return await _localMed.LoadAsync();
@@ -129,7 +126,7 @@ public class MedicationService : IMedicationService
                 await _localMed.UpsertAsync(item);
                 return;
             }
-            catch
+            catch (OfflineException)
             {
                 ConnectivityHelper.MarkOffline();
             }
@@ -163,7 +160,7 @@ public class MedicationService : IMedicationService
                 await _localMed.DeleteAsync(item);
                 return;
             }
-            catch
+            catch (OfflineException)
             {
                 ConnectivityHelper.MarkOffline();
             }
@@ -194,7 +191,7 @@ public class MedicationService : IMedicationService
                 ConnectivityHelper.MarkOnline();
                 return items;
             }
-            catch
+            catch (OfflineException)
             {
                 ConnectivityHelper.MarkOffline();
                 return await _localMed.GetLowStockAsync();
@@ -206,8 +203,6 @@ public class MedicationService : IMedicationService
 
     public async Task AdjustStockFifoAsync(string medName, int delta)
     {
-        // Compute per-batch FIFO splits so we can enqueue standard StockAdjustment
-        // items that SyncAsync already knows how to process.
         var localList = await _localMed.LoadAsync();
         var batches = localList
             .Where(m => (m.ResidentId == null || m.ResidentId == Guid.Empty)
@@ -215,7 +210,6 @@ public class MedicationService : IMedicationService
             .OrderBy(m => m.ExpiryDate)
             .ToList();
 
-        // Compute per-batch deltas before the local write
         var perBatchDeltas = new List<(Guid Id, int Delta)>();
         if (batches.Count > 0)
         {
@@ -237,10 +231,8 @@ public class MedicationService : IMedicationService
             }
         }
 
-        // Apply FIFO locally
         await _localMed.AdjustStockFifoAsync(medName, delta);
 
-        // If online, push per-batch adjustments to API immediately
         if (ConnectivityHelper.IsOnline())
         {
             try
@@ -250,13 +242,12 @@ public class MedicationService : IMedicationService
                 ConnectivityHelper.MarkOnline();
                 return;
             }
-            catch
+            catch (OfflineException)
             {
                 ConnectivityHelper.MarkOffline();
             }
         }
 
-        // Offline — enqueue standard StockAdjustment items per batch
         foreach (var (id, d) in perBatchDeltas)
         {
             var payload = new { MedicationId = id, Delta = d };
@@ -283,7 +274,7 @@ public class MedicationService : IMedicationService
                 await _localMed.AdjustStockAsync(medicationId, delta);
                 return;
             }
-            catch
+            catch (OfflineException)
             {
                 ConnectivityHelper.MarkOffline();
             }
@@ -314,7 +305,6 @@ public class MedicationService : IMedicationService
 
         int success = 0;
 
-        // Process Medication CRUD operations
         foreach (var item in items.Where(x => x.EntityType == "Medication").OrderBy(x => x.CreatedAtUtc))
         {
             try
@@ -330,8 +320,6 @@ public class MedicationService : IMedicationService
                 {
                     case SyncOperation.Create:
                     case SyncOperation.Update:
-                        // Try upsert as-is (PUT). The API will handle
-                        // create-or-update via the controller.
                         await _apiMed.UpsertAsync(med);
                         break;
                     case SyncOperation.Delete:
@@ -348,7 +336,6 @@ public class MedicationService : IMedicationService
             }
         }
 
-        // Process StockAdjustment operations separately
         foreach (var item in items.Where(x => x.EntityType == "StockAdjustment").OrderBy(x => x.CreatedAtUtc))
         {
             try
