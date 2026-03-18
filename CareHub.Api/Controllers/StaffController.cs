@@ -14,6 +14,7 @@ public sealed class StaffController : ControllerBase
 {
     private readonly CareHubDbContext _db;
     private readonly string _staffDirectoryPath;
+    private readonly string _desktopSeedStaffPath;
     private static readonly SemaphoreSlim StaffDirectoryLock = new(1, 1);
     private static readonly JsonSerializerOptions StaffJsonOptions = new()
     {
@@ -25,6 +26,7 @@ public sealed class StaffController : ControllerBase
     {
         _db = db;
         _staffDirectoryPath = ResolveStaffDirectoryPath(config, env);
+        _desktopSeedStaffPath = Path.GetFullPath(Path.Combine(env.ContentRootPath, "..", "CareHub.Desktop", "Resources", "Raw", "Staff.json"));
     }
 
     // GET api/staff
@@ -192,6 +194,8 @@ public sealed class StaffController : ControllerBase
         await StaffDirectoryLock.WaitAsync(ct);
         try
         {
+            EnsureDirectoryFileExists();
+
             if (!System.IO.File.Exists(_staffDirectoryPath))
                 return new List<StaffDirectoryRecord>();
 
@@ -203,6 +207,19 @@ public sealed class StaffController : ControllerBase
         {
             StaffDirectoryLock.Release();
         }
+    }
+
+    private void EnsureDirectoryFileExists()
+    {
+        if (System.IO.File.Exists(_staffDirectoryPath))
+            return;
+
+        var targetDir = Path.GetDirectoryName(_staffDirectoryPath);
+        if (!string.IsNullOrWhiteSpace(targetDir))
+            Directory.CreateDirectory(targetDir);
+
+        if (System.IO.File.Exists(_desktopSeedStaffPath))
+            System.IO.File.Copy(_desktopSeedStaffPath, _staffDirectoryPath, overwrite: false);
     }
 
     private async Task SaveDirectoryAsync(List<StaffDirectoryRecord> staff, CancellationToken ct)

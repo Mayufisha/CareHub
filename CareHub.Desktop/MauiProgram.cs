@@ -112,7 +112,7 @@ namespace CareHub
                 client.BaseAddress = apiBase;
                 client.Timeout = TimeSpan.FromSeconds(10);
             }).AddHttpMessageHandler<AuthTokenHandler>();
-            builder.Services.AddHttpClient<StaffApiService>(client =>
+            builder.Services.AddHttpClient<IStaffService, StaffApiService>(client =>
             {
                 client.BaseAddress = apiBase;
                 client.Timeout = TimeSpan.FromSeconds(10);
@@ -188,7 +188,6 @@ namespace CareHub
                 var local = sp.GetRequiredService<MedicationOrderJsonService>();
                 return new CareHub.Desktop.Services.MedicationOrderService(api, local);
             });
-            builder.Services.AddSingleton<IStaffService, StaffApiService>();
 
             // ViewModels
             builder.Services.AddTransient<FloorPlanViewModel>();
