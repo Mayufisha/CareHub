@@ -13,13 +13,10 @@ namespace CareHub
 {
     public partial class AppShell : Shell
     {
-        private readonly AuthService _auth;
+        private AuthService? _auth;
         public AppShell()
         {
             InitializeComponent();
-         
-            _auth = MauiProgram.Services.GetService<AuthService>()?? throw new InvalidOperationException("AuthService not found.");
-
 
         // Routes – only register sub-pages that are NOT declared as ShellContent in XAML
         Routing.RegisterRoute(nameof(EditMedicationPage), typeof(EditMedicationPage));
@@ -168,7 +165,17 @@ namespace CareHub
 
         private void ApplyRbac()
         {
-            if (!_auth.IsLoggedIn)
+            var auth = GetAuthService();
+            if (auth == null)
+            {
+                if (StaffManagementItem != null)
+                    StaffManagementItem.IsVisible = false;
+                if (MedicationInventoryItem != null)
+                    MedicationInventoryItem.IsVisible = false;
+                return;
+            }
+
+            if (!auth.IsLoggedIn)
             {
                 if (StaffManagementItem != null)
                     StaffManagementItem.IsVisible = false;
@@ -179,20 +186,38 @@ namespace CareHub
 
             // Staff Management: Admin only
             if (StaffManagementItem != null)
-                StaffManagementItem.IsVisible = _auth.HasRole(StaffRole.Admin);
+                StaffManagementItem.IsVisible = auth.HasRole(StaffRole.Admin);
 
             // Inventory / Medications: Admin and Nurse only (not CareStaff)
             if (MedicationInventoryItem != null)
-                MedicationInventoryItem.IsVisible = _auth.HasRole(StaffRole.Admin, StaffRole.Nurse);
+                MedicationInventoryItem.IsVisible = auth.HasRole(StaffRole.Admin, StaffRole.Nurse);
         }
 
         public async Task LogoutAsync()
         {
-            _auth.Logout();
+            var auth = GetAuthService();
+            auth?.Logout();
 
             ApplyRbac();
 
             await GoToAsync("//LoginPage");
+        }
+
+        private AuthService? GetAuthService()
+        {
+            if (_auth != null)
+                return _auth;
+
+            _auth = Application.Current?
+                .Handler?
+                .MauiContext?
+                .Services
+                .GetService<AuthService>();
+
+            if (_auth == null && MauiProgram.Services != null)
+                _auth = MauiProgram.Services.GetService<AuthService>();
+
+            return _auth;
         }
 
         private async void OnLogoutClicked(object sender, EventArgs e)
