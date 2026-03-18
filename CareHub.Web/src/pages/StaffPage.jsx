@@ -139,6 +139,9 @@ function StaffPage({
                     <option value="Admin">Admin</option>
                     <option value="Nurse">Nurse</option>
                     <option value="General CareStaff">General CareStaff</option>
+                    <option value="Care">Care</option>
+                    <option value="Kitchen">Kitchen</option>
+                    <option value="Facilities">Facilities</option>
                     <option value="Observer">Observer</option>
                   </select>
                 </label>

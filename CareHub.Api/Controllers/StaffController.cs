@@ -3,6 +3,7 @@ using CareHub.Api.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace CareHub.Api.Controllers;
 
@@ -12,10 +13,18 @@ namespace CareHub.Api.Controllers;
 public sealed class StaffController : ControllerBase
 {
     private readonly CareHubDbContext _db;
+    private readonly string _staffDirectoryPath;
+    private static readonly SemaphoreSlim StaffDirectoryLock = new(1, 1);
+    private static readonly JsonSerializerOptions StaffJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        WriteIndented = true
+    };
 
-    public StaffController(CareHubDbContext db)
+    public StaffController(CareHubDbContext db, IConfiguration config, IWebHostEnvironment env)
     {
         _db = db;
+        _staffDirectoryPath = ResolveStaffDirectoryPath(config, env);
     }
 
     // GET api/staff
@@ -141,6 +150,100 @@ public sealed class StaffController : ControllerBase
 
         return NoContent();
     }
+
+    // GET api/staff/directory
+    [HttpGet("directory")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<List<StaffDirectoryRecord>>> GetDirectory(CancellationToken ct)
+    {
+        var list = await LoadDirectoryAsync(ct);
+        return Ok(list.OrderBy(x => x.EmployeeId, StringComparer.OrdinalIgnoreCase).ToList());
+    }
+
+    // PUT api/staff/directory/{employeeId}
+    [HttpPut("directory/{employeeId}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> UpsertDirectoryRecord(string employeeId, [FromBody] StaffDirectoryRecord request, CancellationToken ct)
+    {
+        if (request is null)
+            return BadRequest("Request body is required.");
+
+        var normalizedId = (employeeId ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(normalizedId))
+            return BadRequest("EmployeeId is required.");
+
+        request.EmployeeId = normalizedId;
+        request.Compliance ??= new StaffComplianceRecord();
+
+        var list = await LoadDirectoryAsync(ct);
+        var index = list.FindIndex(x => x.EmployeeId.Equals(normalizedId, StringComparison.OrdinalIgnoreCase));
+
+        if (index >= 0)
+            list[index] = request;
+        else
+            list.Add(request);
+
+        await SaveDirectoryAsync(list, ct);
+        return NoContent();
+    }
+
+    private async Task<List<StaffDirectoryRecord>> LoadDirectoryAsync(CancellationToken ct)
+    {
+        await StaffDirectoryLock.WaitAsync(ct);
+        try
+        {
+            if (!System.IO.File.Exists(_staffDirectoryPath))
+                return new List<StaffDirectoryRecord>();
+
+            await using var stream = System.IO.File.OpenRead(_staffDirectoryPath);
+            return await JsonSerializer.DeserializeAsync<List<StaffDirectoryRecord>>(stream, StaffJsonOptions, ct)
+                   ?? new List<StaffDirectoryRecord>();
+        }
+        finally
+        {
+            StaffDirectoryLock.Release();
+        }
+    }
+
+    private async Task SaveDirectoryAsync(List<StaffDirectoryRecord> staff, CancellationToken ct)
+    {
+        await StaffDirectoryLock.WaitAsync(ct);
+        try
+        {
+            var dir = Path.GetDirectoryName(_staffDirectoryPath);
+            if (!string.IsNullOrWhiteSpace(dir))
+                Directory.CreateDirectory(dir);
+
+            await using var stream = System.IO.File.Create(_staffDirectoryPath);
+            await JsonSerializer.SerializeAsync(stream, staff, StaffJsonOptions, ct);
+        }
+        finally
+        {
+            StaffDirectoryLock.Release();
+        }
+    }
+
+    private static string ResolveStaffDirectoryPath(IConfiguration config, IWebHostEnvironment env)
+    {
+        var configured = config["StaffDirectory:Path"];
+        if (!string.IsNullOrWhiteSpace(configured))
+        {
+            if (Directory.Exists(configured))
+                return Path.Combine(configured, "Staff.json");
+
+            var parent = Path.GetDirectoryName(configured);
+            if (!string.IsNullOrWhiteSpace(parent))
+                Directory.CreateDirectory(parent);
+            return configured;
+        }
+
+        var sharedData = Path.GetFullPath(Path.Combine(env.ContentRootPath, "..", "SharedData"));
+        if (Directory.Exists(sharedData))
+            return Path.Combine(sharedData, "Staff.json");
+
+        var desktopRaw = Path.GetFullPath(Path.Combine(env.ContentRootPath, "..", "CareHub.Desktop", "Resources", "Raw"));
+        return Path.Combine(desktopRaw, "Staff.json");
+    }
 }
 
 public sealed class CreateStaffRequest
@@ -156,4 +259,27 @@ public sealed class UpdateStaffRequest
     public string? DisplayName { get; set; }
     public string? Role { get; set; }
     public string? Password { get; set; }
+}
+
+public sealed class StaffDirectoryRecord
+{
+    public string EmployeeId { get; set; } = "";
+    public string StaffFName { get; set; } = "";
+    public string StaffLName { get; set; } = "";
+    public string JobTitle { get; set; } = "";
+    public string Department { get; set; } = "";
+    public string EmploymentStatus { get; set; } = "";
+    public decimal HourlyWage { get; set; }
+    public string ShiftPreference { get; set; } = "";
+    public string Role { get; set; } = "General CareStaff";
+    public bool IsEnabled { get; set; } = true;
+    public StaffComplianceRecord Compliance { get; set; } = new();
+}
+
+public sealed class StaffComplianceRecord
+{
+    public bool HasFirstAid { get; set; }
+    public string FirstAidExpiry { get; set; } = "";
+    public bool FoodSafeCertified { get; set; }
+    public string FoodSafeExpiry { get; set; } = "";
 }

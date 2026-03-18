@@ -26,6 +26,41 @@ const ROLE_SECTIONS = {
 const EMPTY_GUID = "00000000-0000-0000-0000-000000000000";
 const DEFAULT_PAGE_SIZE = 8;
 
+function toStaffListItem(item) {
+  const employeeId = item.employeeId || item.EmployeeId || "";
+  const firstName = item.staffFName || item.StaffFName || "";
+  const lastName = item.staffLName || item.StaffLName || "";
+  const displayName = `${firstName} ${lastName}`.trim() || employeeId;
+  const role = item.role || item.Role || "General CareStaff";
+
+  return {
+    ...item,
+    employeeId,
+    username: employeeId,
+    displayName,
+    role
+  };
+}
+
+function splitDisplayName(value) {
+  const parts = String(value || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) {
+    return { firstName: "", lastName: "" };
+  }
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: "" };
+  }
+
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(" ")
+  };
+}
+
 function App() {
   const [activeSection, setActiveSection] = useState("Dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -173,12 +208,12 @@ function App() {
           canReadResidents ? api.get("/residents") : Promise.resolve([]),
           canReadInventory ? api.get("/medications") : Promise.resolve([]),
           canReadObservations ? api.get("/observations") : Promise.resolve([]),
-          canReadStaffList ? api.get("/staff") : Promise.resolve([])
+          canReadStaffList ? api.get("/staff/directory") : Promise.resolve([])
         ]);
         setResidents(Array.isArray(resData) ? resData : []);
         setMedications(Array.isArray(medData) ? medData : []);
         setObservations(Array.isArray(obsData) ? obsData : []);
-        setStaffMembers(Array.isArray(staffData) ? staffData : []);
+        setStaffMembers(Array.isArray(staffData) ? staffData.map(toStaffListItem) : []);
       } catch (err) {
         if (err.status === 401 || err.status === 403) {
           handleLogout();
@@ -534,9 +569,37 @@ function App() {
       throw new Error("Staff username is required.");
     }
 
-    await api.put(`/staff/${encodeURIComponent(username)}`, nextStaff);
-    const refreshed = await api.get("/staff");
-    setStaffMembers(Array.isArray(refreshed) ? refreshed : []);
+    const existing = staffMembers.find((member) => member.username === username);
+    if (!existing) {
+      throw new Error("Staff record not found.");
+    }
+
+    const { firstName, lastName } = splitDisplayName(nextStaff?.displayName || existing.displayName);
+    const employeeId = existing.employeeId || existing.EmployeeId || username;
+
+    const payload = {
+      employeeId,
+      staffFName: firstName || existing.staffFName || existing.StaffFName || "",
+      staffLName: lastName || existing.staffLName || existing.StaffLName || "",
+      jobTitle: existing.jobTitle || existing.JobTitle || "",
+      department: existing.department || existing.Department || "",
+      employmentStatus: existing.employmentStatus || existing.EmploymentStatus || "",
+      hourlyWage: Number(existing.hourlyWage ?? existing.HourlyWage ?? 0),
+      shiftPreference: existing.shiftPreference || existing.ShiftPreference || "",
+      role: nextStaff?.role || existing.role || existing.Role || "General CareStaff",
+      isEnabled: existing.isEnabled ?? existing.IsEnabled ?? true,
+      compliance: existing.compliance ||
+        existing.Compliance || {
+          hasFirstAid: false,
+          firstAidExpiry: "",
+          foodSafeCertified: false,
+          foodSafeExpiry: ""
+        }
+    };
+
+    await api.put(`/staff/directory/${encodeURIComponent(employeeId)}`, payload);
+    const refreshed = await api.get("/staff/directory");
+    setStaffMembers(Array.isArray(refreshed) ? refreshed.map(toStaffListItem) : []);
   }
 
   function renderActivePage() {
