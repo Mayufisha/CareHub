@@ -112,6 +112,11 @@ namespace CareHub
                 client.BaseAddress = apiBase;
                 client.Timeout = TimeSpan.FromSeconds(10);
             }).AddHttpMessageHandler<AuthTokenHandler>();
+            builder.Services.AddHttpClient<StaffApiService>(client =>
+            {
+                client.BaseAddress = apiBase;
+                client.Timeout = TimeSpan.FromSeconds(10);
+            }).AddHttpMessageHandler<AuthTokenHandler>();
             builder.Services.AddHttpClient<AiApiService>(client =>
             {
                 client.BaseAddress = apiBase;
@@ -136,6 +141,7 @@ namespace CareHub
             builder.Services.AddSingleton<MedicationJsonService>();
             builder.Services.AddSingleton<ObservationJsonService>();
             builder.Services.AddSingleton<MarJsonService>();
+            builder.Services.AddSingleton<MedicationOrderJsonService>();
 
             // Medications: API + Local + Wrapper
             builder.Services.AddSingleton((Func<IServiceProvider, CareHub.Services.Abstractions.IMedicationService>)(sp =>
@@ -182,7 +188,7 @@ namespace CareHub
                 var local = sp.GetRequiredService<MedicationOrderJsonService>();
                 return new CareHub.Desktop.Services.MedicationOrderService(api, local);
             });
-            builder.Services.AddSingleton<IStaffService, StaffJsonService>();
+            builder.Services.AddSingleton<IStaffService, StaffApiService>();
 
             // ViewModels
             builder.Services.AddTransient<FloorPlanViewModel>();
