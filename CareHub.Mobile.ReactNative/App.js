@@ -9,6 +9,7 @@ import DashboardScreen from "./src/screens/DashboardScreen";
 import ResidentsScreen from "./src/screens/ResidentsScreen";
 import ObservationsScreen from "./src/screens/ObservationsScreen";
 import MedicationsScreen from "./src/screens/MedicationsScreen";
+import MarScreen from "./src/screens/MarScreen";
 
 const Stack = createNativeStackNavigator();
 const Tabs = createBottomTabNavigator();
@@ -21,6 +22,7 @@ function AppTabs() {
   const canSeeObservations =
     role === "Nurse" || role === "General CareStaff" || role === "Observer";
   const canSeeMedications = role === "Nurse" || role === "Observer";
+  const canSeeMar = role === "Nurse";
 
   return (
     <Tabs.Navigator>
@@ -34,6 +36,7 @@ function AppTabs() {
       {canSeeMedications ? (
         <Tabs.Screen name="Medications" component={MedicationsScreen} />
       ) : null}
+      {canSeeMar ? <Tabs.Screen name="MAR" component={MarScreen} /> : null}
     </Tabs.Navigator>
   );
 }

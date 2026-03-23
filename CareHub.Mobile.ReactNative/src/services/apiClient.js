@@ -33,7 +33,13 @@ export async function apiRequest(path, options = {}, token = "") {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || `${response.status} ${response.statusText}`);
+    try {
+      const parsed = JSON.parse(text);
+      const message = parsed?.message || parsed?.error || parsed?.detail || text;
+      throw new Error(message || `${response.status} ${response.statusText}`);
+    } catch {
+      throw new Error(text || `${response.status} ${response.statusText}`);
+    }
   }
 
   if (response.status === 204) {
@@ -75,4 +81,36 @@ export async function createObservation(observation, token) {
 
 export async function getMedications(token) {
   return apiRequest("/medications", { method: "GET" }, token);
+}
+
+export async function getMarEntries(token, query = {}) {
+  const params = new URLSearchParams();
+  if (query.residentId) params.set("residentId", query.residentId);
+  if (query.fromUtc) params.set("fromUtc", query.fromUtc);
+  if (query.toUtc) params.set("toUtc", query.toUtc);
+  if (query.includeVoided) params.set("includeVoided", "true");
+  const qs = params.toString();
+  return apiRequest(`/mar${qs ? `?${qs}` : ""}`, { method: "GET" }, token);
+}
+
+export async function createMarEntry(entry, token) {
+  return apiRequest(
+    "/mar",
+    {
+      method: "POST",
+      body: JSON.stringify(entry)
+    },
+    token
+  );
+}
+
+export async function voidMarEntry(marEntryId, reason, token) {
+  return apiRequest(
+    `/mar/${marEntryId}/void`,
+    {
+      method: "POST",
+      body: JSON.stringify({ reason: reason || "Voided on mobile app" })
+    },
+    token
+  );
 }
