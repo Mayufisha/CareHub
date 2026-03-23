@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  RefreshControl,
   SafeAreaView,
   Text,
   TextInput,
@@ -21,6 +22,8 @@ export default function ObservationsScreen() {
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [loadingList, setLoadingList] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [query, setQuery] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -39,6 +42,15 @@ export default function ObservationsScreen() {
       setLoadingList(false);
     }
   }, [token]);
+
+  const onRefresh = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      await loadObservations();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadObservations]);
 
   const loadResidents = useCallback(async () => {
     if (!canRecord) {
@@ -118,10 +130,27 @@ export default function ObservationsScreen() {
     return "Unavailable";
   }, [user]);
 
+  const filteredItems = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term) return items;
+    return items.filter((item) => {
+      const typeText = String(item.type || item.Type || "").toLowerCase();
+      const valueText = String(item.value || item.Value || "").toLowerCase();
+      const nameText = String(item.residentName || item.ResidentName || "").toLowerCase();
+      return typeText.includes(term) || valueText.includes(term) || nameText.includes(term);
+    });
+  }, [items, query]);
+
   return (
     <SafeAreaView style={{ flex: 1, padding: 16 }}>
       <Text style={{ fontSize: 20, marginBottom: 8 }}>Observations</Text>
       <Text style={{ marginBottom: 8 }}>Access mode: {modeLabel}</Text>
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Filter observations"
+        style={{ borderWidth: 1, borderColor: "#ccc", marginBottom: 8, padding: 10, borderRadius: 6 }}
+      />
       {canRecord ? (
         <View
           style={{
@@ -195,7 +224,8 @@ export default function ObservationsScreen() {
       {isObserver ? <Text style={{ marginBottom: 8 }}>Observer can only view their own records.</Text> : null}
       {loadingList ? <ActivityIndicator style={{ marginBottom: 8 }} /> : null}
       <FlatList
-        data={items}
+        data={filteredItems}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         keyExtractor={(item) => String(item.id || item.Id)}
         renderItem={({ item }) => (
           <View style={{ paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#eee" }}>
