@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  RefreshControl,
   SafeAreaView,
   Text,
   TextInput,
@@ -42,8 +43,11 @@ export default function MarScreen() {
   const [doseUnit, setDoseUnit] = useState("tablet");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [voidingId, setVoidingId] = useState("");
+  const [query, setQuery] = useState("");
+  const [includeVoided, setIncludeVoided] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -71,7 +75,7 @@ export default function MarScreen() {
       const fromUtc = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const toUtc = new Date().toISOString();
       const [marData, residentData, medicationData] = await Promise.all([
-        getMarEntries(token, { fromUtc, toUtc, includeVoided: false }),
+        getMarEntries(token, { fromUtc, toUtc, includeVoided }),
         getResidents(token),
         getMedications(token)
       ]);
@@ -90,11 +94,26 @@ export default function MarScreen() {
     } finally {
       setLoading(false);
     }
-  }, [selectedResidentId, token]);
+  }, [includeVoided, selectedResidentId, token]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const filteredEntries = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term) return entries;
+    return entries.filter((item) => {
+      const residentId = String(item.residentId || item.ResidentId || "");
+      const residentName = String(residentById.get(residentId) || "").toLowerCase();
+      const status = String(item.status || item.Status || "").toLowerCase();
+      const medName = String(
+        medications.find((med) => String(med.id || med.Id) === String(item.medicationId || item.MedicationId))
+          ?.medName || ""
+      ).toLowerCase();
+      return residentName.includes(term) || status.includes(term) || medName.includes(term);
+    });
+  }, [entries, medications, query, residentById]);
 
   useEffect(() => {
     if (!selectedResidentId || filteredMeds.length === 0) {
@@ -177,6 +196,20 @@ export default function MarScreen() {
     <SafeAreaView style={{ flex: 1, padding: 16 }}>
       <Text style={{ fontSize: 20, marginBottom: 8 }}>MAR (Nurse)</Text>
       <Text style={{ marginBottom: 8 }}>Create and review medication administration entries.</Text>
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Filter by resident, medication, or status"
+        style={{ borderWidth: 1, borderColor: "#ccc", marginBottom: 8, padding: 10, borderRadius: 6 }}
+      />
+      <TouchableOpacity
+        onPress={() => setIncludeVoided((current) => !current)}
+        style={{ marginBottom: 10 }}
+      >
+        <Text style={{ color: "#2a7" }}>
+          {includeVoided ? "Hide voided entries" : "Show voided entries"}
+        </Text>
+      </TouchableOpacity>
 
       <View style={{ padding: 12, borderWidth: 1, borderColor: "#ddd", borderRadius: 8, marginBottom: 12 }}>
         <Text style={{ fontWeight: "600", marginBottom: 8 }}>New MAR Entry</Text>
@@ -304,7 +337,20 @@ export default function MarScreen() {
       {loading ? <ActivityIndicator style={{ marginBottom: 8 }} /> : null}
 
       <FlatList
-        data={entries}
+        data={filteredEntries}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true);
+              try {
+                await loadData();
+              } finally {
+                setRefreshing(false);
+              }
+            }}
+          />
+        }
         keyExtractor={(item) => String(item.id || item.Id)}
         renderItem={({ item }) => {
           const entryId = String(item.id || item.Id || "");
