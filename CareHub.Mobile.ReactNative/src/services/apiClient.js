@@ -114,3 +114,29 @@ export async function voidMarEntry(marEntryId, reason, token) {
     token
   );
 }
+
+export async function getMedicationOrders(token) {
+  return apiRequest("/medicationorders", { method: "GET" }, token);
+}
+
+export async function createMedicationOrder(order, token) {
+  return apiRequest(
+    "/medicationorders",
+    {
+      method: "POST",
+      body: JSON.stringify(order)
+    },
+    token
+  );
+}
+
+export async function updateMedicationOrderStatus(orderId, statusPayload, token) {
+  return apiRequest(
+    `/medicationorders/${orderId}/status`,
+    {
+      method: "PUT",
+      body: JSON.stringify(statusPayload)
+    },
+    token
+  );
+}
