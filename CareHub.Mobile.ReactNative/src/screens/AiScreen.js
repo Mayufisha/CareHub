@@ -9,13 +9,20 @@ import {
   View
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
-import { aiCareQuery, aiDetectTrends, aiShiftSummary, getResidents } from "../services/apiClient";
+import {
+  aiCareQuery,
+  aiDetectTrends,
+  aiShiftSummary,
+  aiTrendExplain,
+  getResidents
+} from "../services/apiClient";
 
 export default function AiScreen() {
   const { token, user } = useAuth();
   const [residents, setResidents] = useState([]);
   const [selectedResidentId, setSelectedResidentId] = useState("");
   const [query, setQuery] = useState("");
+  const [trendDays, setTrendDays] = useState(7);
   const [responseText, setResponseText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -90,6 +97,23 @@ export default function AiScreen() {
     }
   }
 
+  async function runTrendExplain() {
+    if (!selectedResidentId) {
+      setError("Choose a resident first.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const result = await aiTrendExplain(selectedResidentId, trendDays, token);
+      setResponseText(result?.content || "No AI content returned.");
+    } catch (err) {
+      setError(err?.message || "AI trend explain failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   if (!canUseAi) {
     return (
       <SafeAreaView style={{ flex: 1, padding: 16 }}>
@@ -139,6 +163,17 @@ export default function AiScreen() {
         </TouchableOpacity>
         <TouchableOpacity onPress={runTrendDetect}>
           <Text style={{ color: "#2a7" }}>Detect Trends</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={{ flexDirection: "row", marginBottom: 8 }}>
+        <TouchableOpacity onPress={() => setTrendDays(3)} style={{ marginRight: 12 }}>
+          <Text style={{ color: trendDays === 3 ? "#2a7" : "#666" }}>3-Day</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setTrendDays(7)} style={{ marginRight: 12 }}>
+          <Text style={{ color: trendDays === 7 ? "#2a7" : "#666" }}>7-Day</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={runTrendExplain}>
+          <Text style={{ color: "#2a7" }}>Trend Explain</Text>
         </TouchableOpacity>
       </View>
 

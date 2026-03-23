@@ -173,3 +173,14 @@ export async function aiCareQuery(query, residentId, token) {
     token
   );
 }
+
+export async function aiTrendExplain(residentId, days, token) {
+  return apiRequest(
+    "/ai/trend-explain",
+    {
+      method: "POST",
+      body: JSON.stringify({ residentId, days })
+    },
+    token
+  );
+}
