@@ -74,7 +74,7 @@ namespace CareHub
             });
 
             // One constant BaseUrl
-            var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5001/";
+            var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5007/";
             var apiBase = new Uri(apiBaseUrl);
 
             // Auth service (needs base URL for API login)

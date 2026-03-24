@@ -21,7 +21,7 @@ namespace CareHub.Services
         public string? AccessToken { get; private set; }
         public bool IsLoggedIn => CurrentUser != null;
 
-        public AuthService(string apiBaseUrl = "http://localhost:5001/")
+        public AuthService(string apiBaseUrl = "http://localhost:5007/")
         {
             _apiBaseUrl = apiBaseUrl;
         }

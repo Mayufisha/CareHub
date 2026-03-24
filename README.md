@@ -80,9 +80,9 @@ Edit `CareHub.Api/appsettings.Development.json`:
 dotnet run --project CareHub.Api
 ```
 
-The API starts on **http://localhost:5001**. Verify it's running:
-- Swagger UI: http://localhost:5001/swagger
-- Health check: http://localhost:5001/health
+The API starts on **http://localhost:5007**. Verify it's running:
+- Swagger UI: http://localhost:5007/swagger
+- Health check: http://localhost:5007/health
 
 On first startup, the API automatically:
 - Seeds resident and medication data from `SharedData/` JSON files
@@ -99,7 +99,7 @@ dotnet run --project CareHub.Desktop
 
 A Windows app window (1200x800) will open with the login screen.
 
-> The desktop app connects to the API at `http://localhost:5001` by default. It works offline too — data is cached locally and synced when the API becomes available.
+> The desktop app connects to the API at `http://localhost:5007` by default. It works offline too — data is cached locally and synced when the API becomes available.
 
 ## Test Accounts
 
@@ -199,7 +199,7 @@ Full API documentation is available at `/swagger` when the API is running.
 ## Troubleshooting
 
 **"Connection refused" when starting the desktop app**
-- Make sure the API is running on port 5001: `dotnet run --project CareHub.Api`
+- Make sure the API is running on port 5007: `dotnet run --project CareHub.Api`
 - Make sure Docker is running and the database container is up: `docker compose ps`
 - The desktop app works offline — it will sync when the API is available
 

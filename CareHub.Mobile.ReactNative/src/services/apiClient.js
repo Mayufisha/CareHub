@@ -1,9 +1,9 @@
 import { Platform } from "react-native";
 
 const API_BASE_BY_PLATFORM = {
-  android: "http://10.0.2.2:5001/api",
-  ios: "http://localhost:5001/api",
-  default: "http://localhost:5001/api"
+  android: "http://10.0.2.2:5007/api",
+  ios: "http://localhost:5007/api",
+  default: "http://localhost:5007/api"
 };
 
 let apiBaseUrl =

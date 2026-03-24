@@ -49,8 +49,8 @@ React Native mobile client for CareHub, connected to `CareHub.Api` JWT auth and 
 
 Configured in `src/services/apiClient.js`:
 
-- Android emulator default: `http://10.0.2.2:5001/api`
-- iOS/default fallback: `http://localhost:5001/api`
+- Android emulator default: `http://10.0.2.2:5007/api`
+- iOS/default fallback: `http://localhost:5007/api`
 - Optional override: `CAREHUB_API_BASE_URL`
 
 ## Run

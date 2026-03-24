@@ -20,8 +20,8 @@ dotnet run --project .\CareHub.Api\CareHub.Api.csproj
 
 Confirm:
 
-- `http://localhost:5001/health`
-- `http://localhost:5001/swagger`
+- `http://localhost:5007/health`
+- `http://localhost:5007/swagger`
 
 ## 3) Start Metro
 
@@ -98,8 +98,8 @@ Test-Path "$SdkRoot\ndk\26.1.10909125\source.properties"
 
 Configured in `src/services/apiClient.js`:
 
-- Android emulator: `http://10.0.2.2:5001/api`
-- iOS/default: `http://localhost:5001/api`
+- Android emulator: `http://10.0.2.2:5007/api`
+- iOS/default: `http://localhost:5007/api`
 
 ## 6) Quick login and feature test checklist
 

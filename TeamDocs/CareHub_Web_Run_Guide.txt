@@ -14,9 +14,9 @@ From project root:
 dotnet run --project .\CareHub.Api\CareHub.Api.csproj --launch-profile http
 
 Expected
-- API runs on http://localhost:5001
+- API runs on http://localhost:5007
 - Health check:
-  curl.exe -i http://localhost:5001/health
+  curl.exe -i http://localhost:5007/health
   Expect: HTTP 200 and {"ok":true}
 
 3) Start Web
@@ -28,7 +28,7 @@ npm.cmd run dev
 
 Expected
 - Vite dev server URL (usually http://localhost:5173)
-- Web calls API base from src/api.js default: http://localhost:5001/api
+- Web calls API base from src/api.js default: http://localhost:5007/api
 
 4) Login Accounts (seeded)
 - Admin: admin / admin123
@@ -44,7 +44,7 @@ Expected
 
 6) Quick Verification Commands
 Create admin token:
-$u="http://localhost:5001"
+$u="http://localhost:5007"
 $h=@{"Content-Type"="application/json"}
 $adminBody=@{username="admin";password="admin123"} | ConvertTo-Json -Compress
 $adminToken=(Invoke-RestMethod -Method Post -Uri "$u/api/auth/login" -Headers $h -Body $adminBody).accessToken

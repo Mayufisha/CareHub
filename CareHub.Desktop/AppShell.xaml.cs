@@ -245,7 +245,7 @@ namespace CareHub
         {
             try
             {
-                using var http= new HttpClient {BaseAddress = new Uri("http://localhost:5001/") };
+                using var http= new HttpClient {BaseAddress = new Uri("http://localhost:5007/") };
                 http.Timeout = TimeSpan.FromSeconds(8);
 
                 var health = await http.GetAsync("health");

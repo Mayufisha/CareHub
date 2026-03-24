@@ -14,7 +14,7 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "dotnet run --proj
 Start-Sleep -Seconds 3
 
 # Optional: open Swagger
-Start-Process "http://localhost:5001/swagger"
+Start-Process "http://localhost:5007/swagger"
 
 # Start Desktop app in new window
 Write-Host "Starting Desktop App..."
