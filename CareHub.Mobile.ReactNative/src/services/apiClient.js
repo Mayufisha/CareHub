@@ -64,6 +64,38 @@ export async function getResidents(token) {
   return apiRequest("/residents", { method: "GET" }, token);
 }
 
+export async function createResident(resident, token) {
+  return apiRequest(
+    "/residents",
+    {
+      method: "POST",
+      body: JSON.stringify(resident)
+    },
+    token
+  );
+}
+
+export async function updateResident(residentId, resident, token) {
+  return apiRequest(
+    `/residents/${residentId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(resident)
+    },
+    token
+  );
+}
+
+export async function deleteResident(residentId, token) {
+  return apiRequest(
+    `/residents/${residentId}`,
+    {
+      method: "DELETE"
+    },
+    token
+  );
+}
+
 export async function getObservations(token) {
   return apiRequest("/observations", { method: "GET" }, token);
 }
