@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   RefreshControl,
   SafeAreaView,
@@ -10,7 +11,20 @@ import {
   View
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
-import { createObservation, getObservations, getResidents } from "../services/apiClient";
+import {
+  createObservation,
+  deleteObservation,
+  getObservations,
+  getObservationsByResident,
+  getResidents,
+  updateObservation
+} from "../services/apiClient";
+
+function residentName(item) {
+  const first = item.residentFName || item.ResidentFName || "";
+  const last = item.residentLName || item.ResidentLName || "";
+  return `${first} ${last}`.trim();
+}
 
 export default function ObservationsScreen() {
   const { token, user } = useAuth();
@@ -20,6 +34,7 @@ export default function ObservationsScreen() {
   const [selectedResidentName, setSelectedResidentName] = useState("");
   const [type, setType] = useState("");
   const [value, setValue] = useState("");
+  const [editingId, setEditingId] = useState("");
   const [saving, setSaving] = useState(false);
   const [loadingList, setLoadingList] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,18 +45,24 @@ export default function ObservationsScreen() {
   const canRecord = user?.role === "Nurse" || user?.role === "General CareStaff";
   const isObserver = user?.role === "Observer";
 
-  const loadObservations = useCallback(async () => {
-    try {
-      setLoadingList(true);
-      setError("");
-      const data = await getObservations(token);
-      setItems(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError(err?.message || "Failed to load observations.");
-    } finally {
-      setLoadingList(false);
-    }
-  }, [token]);
+  const loadObservations = useCallback(
+    async (residentIdOverride = selectedResidentId) => {
+      try {
+        setLoadingList(true);
+        setError("");
+        const data =
+          residentIdOverride && canRecord
+            ? await getObservationsByResident(residentIdOverride, token)
+            : await getObservations(token);
+        setItems(Array.isArray(data) ? data : []);
+      } catch (err) {
+        setError(err?.message || "Failed to load observations.");
+      } finally {
+        setLoadingList(false);
+      }
+    },
+    [canRecord, selectedResidentId, token]
+  );
 
   const onRefresh = useCallback(async () => {
     try {
@@ -64,10 +85,9 @@ export default function ObservationsScreen() {
       setResidents(list);
       if (list.length > 0) {
         const first = list[0];
-        setSelectedResidentId(String(first.id || first.Id || ""));
-        setSelectedResidentName(
-          `${first.residentFName || first.ResidentFName || ""} ${first.residentLName || first.ResidentLName || ""}`.trim()
-        );
+        const residentId = String(first.id || first.Id || "");
+        setSelectedResidentId((current) => current || residentId);
+        setSelectedResidentName((current) => current || residentName(first));
       }
     } catch (err) {
       setError(err?.message || "Failed to load residents for observation entry.");
@@ -75,15 +95,24 @@ export default function ObservationsScreen() {
   }, [canRecord, token]);
 
   useEffect(() => {
-    loadObservations();
     loadResidents();
-  }, [loadObservations, loadResidents]);
+  }, [loadResidents]);
+
+  useEffect(() => {
+    loadObservations();
+  }, [loadObservations]);
 
   function pickResident(resident) {
-    setSelectedResidentId(String(resident.id || resident.Id || ""));
-    const fullName =
-      `${resident.residentFName || resident.ResidentFName || ""} ${resident.residentLName || resident.ResidentLName || ""}`.trim();
-    setSelectedResidentName(fullName);
+    const residentId = String(resident.id || resident.Id || "");
+    setSelectedResidentId(residentId);
+    setSelectedResidentName(residentName(resident));
+    loadObservations(residentId);
+  }
+
+  function resetForm() {
+    setEditingId("");
+    setType("");
+    setValue("");
   }
 
   async function onSaveObservation() {
@@ -102,21 +131,25 @@ export default function ObservationsScreen() {
 
     try {
       setSaving(true);
-      await createObservation(
-        {
-          residentId: selectedResidentId,
-          residentName: selectedResidentName,
-          type: type.trim(),
-          value: value.trim(),
-          recordedBy: user?.displayName || user?.username || "mobile-user"
-        },
-        token
-      );
+      const payload = {
+        id: editingId || undefined,
+        residentId: selectedResidentId,
+        residentName: selectedResidentName,
+        type: type.trim(),
+        value: value.trim(),
+        recordedBy: user?.displayName || user?.username || "mobile-user"
+      };
 
-      setType("");
-      setValue("");
-      setSuccess("Observation saved.");
-      await loadObservations();
+      if (editingId) {
+        await updateObservation(editingId, { ...payload, id: editingId }, token);
+        setSuccess("Observation updated.");
+      } else {
+        await createObservation(payload, token);
+        setSuccess("Observation saved.");
+      }
+
+      resetForm();
+      await loadObservations(selectedResidentId);
     } catch (err) {
       setError(err?.message || "Failed to save observation.");
     } finally {
@@ -124,11 +157,50 @@ export default function ObservationsScreen() {
     }
   }
 
+  function startEdit(item) {
+    setEditingId(String(item.id || item.Id || ""));
+    setType((item.type || item.Type || "").toString());
+    setValue((item.value || item.Value || "").toString());
+    setSelectedResidentId(String(item.residentId || item.ResidentId || ""));
+    setSelectedResidentName((item.residentName || item.ResidentName || "").toString());
+    setError("");
+    setSuccess("");
+  }
+
+  function confirmDelete(item) {
+    const observationId = String(item.id || item.Id || "");
+    Alert.alert(
+      "Delete observation",
+      "This permanently removes the observation.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setError("");
+              setSuccess("");
+              await deleteObservation(observationId, token);
+              if (editingId === observationId) {
+                resetForm();
+              }
+              setSuccess("Observation deleted.");
+              await loadObservations(selectedResidentId);
+            } catch (err) {
+              setError(err?.message || "Failed to delete observation.");
+            }
+          }
+        }
+      ]
+    );
+  }
+
   const modeLabel = useMemo(() => {
-    if (user?.role === "Observer") return "Read-only (own observations)";
-    if (user?.role === "Nurse" || user?.role === "General CareStaff") return "Record + view target";
+    if (isObserver) return "Read-only (own observations)";
+    if (canRecord) return "Staff observation management";
     return "Unavailable";
-  }, [user]);
+  }, [canRecord, isObserver]);
 
   const filteredItems = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -137,7 +209,13 @@ export default function ObservationsScreen() {
       const typeText = String(item.type || item.Type || "").toLowerCase();
       const valueText = String(item.value || item.Value || "").toLowerCase();
       const nameText = String(item.residentName || item.ResidentName || "").toLowerCase();
-      return typeText.includes(term) || valueText.includes(term) || nameText.includes(term);
+      const recorder = String(item.recordedBy || item.RecordedBy || "").toLowerCase();
+      return (
+        typeText.includes(term) ||
+        valueText.includes(term) ||
+        nameText.includes(term) ||
+        recorder.includes(term)
+      );
     });
   }, [items, query]);
 
@@ -161,7 +239,9 @@ export default function ObservationsScreen() {
             borderRadius: 8
           }}
         >
-          <Text style={{ fontWeight: "600", marginBottom: 8 }}>Record Observation</Text>
+          <Text style={{ fontWeight: "600", marginBottom: 8 }}>
+            {editingId ? "Edit Observation" : "Record Observation"}
+          </Text>
           <Text style={{ marginBottom: 4 }}>Resident</Text>
           <FlatList
             horizontal
@@ -169,8 +249,7 @@ export default function ObservationsScreen() {
             keyExtractor={(item) => String(item.id || item.Id)}
             renderItem={({ item }) => {
               const id = String(item.id || item.Id);
-              const fullName =
-                `${item.residentFName || item.ResidentFName || ""} ${item.residentLName || item.ResidentLName || ""}`.trim();
+              const fullName = residentName(item);
               const selected = id === selectedResidentId;
               return (
                 <TouchableOpacity
@@ -210,13 +289,19 @@ export default function ObservationsScreen() {
               backgroundColor: saving ? "#8fbca8" : "#2a7",
               paddingVertical: 10,
               borderRadius: 6,
-              alignItems: "center"
+              alignItems: "center",
+              marginBottom: editingId ? 8 : 0
             }}
           >
             <Text style={{ color: "white", fontWeight: "600" }}>
-              {saving ? "Saving..." : "Save Observation"}
+              {saving ? "Saving..." : editingId ? "Save Changes" : "Save Observation"}
             </Text>
           </TouchableOpacity>
+          {editingId ? (
+            <TouchableOpacity onPress={resetForm} style={{ alignItems: "center", paddingVertical: 4 }}>
+              <Text style={{ color: "#666" }}>Cancel Edit</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       ) : null}
       {error ? <Text style={{ color: "red", marginBottom: 8 }}>{error}</Text> : null}
@@ -232,7 +317,20 @@ export default function ObservationsScreen() {
             <Text>
               {(item.type || item.Type || "").toString()}: {(item.value || item.Value || "").toString()}
             </Text>
+            <Text style={{ color: "#666" }}>
+              {(item.residentName || item.ResidentName || "").toString()} | {(item.recordedBy || item.RecordedBy || "").toString()}
+            </Text>
             <Text style={{ color: "#666" }}>{(item.recordedAt || item.RecordedAt || "").toString()}</Text>
+            {canRecord ? (
+              <View style={{ flexDirection: "row", marginTop: 6 }}>
+                <TouchableOpacity onPress={() => startEdit(item)} style={{ marginRight: 12 }}>
+                  <Text style={{ color: "#2a7" }}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => confirmDelete(item)}>
+                  <Text style={{ color: "#c22" }}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </View>
         )}
       />

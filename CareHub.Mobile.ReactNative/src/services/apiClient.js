@@ -100,12 +100,37 @@ export async function getObservations(token) {
   return apiRequest("/observations", { method: "GET" }, token);
 }
 
+export async function getObservationsByResident(residentId, token) {
+  return apiRequest(`/observations/by-resident/${residentId}`, { method: "GET" }, token);
+}
+
 export async function createObservation(observation, token) {
   return apiRequest(
     "/observations",
     {
       method: "POST",
       body: JSON.stringify(observation)
+    },
+    token
+  );
+}
+
+export async function updateObservation(observationId, observation, token) {
+  return apiRequest(
+    `/observations/${observationId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(observation)
+    },
+    token
+  );
+}
+
+export async function deleteObservation(observationId, token) {
+  return apiRequest(
+    `/observations/${observationId}`,
+    {
+      method: "DELETE"
     },
     token
   );
