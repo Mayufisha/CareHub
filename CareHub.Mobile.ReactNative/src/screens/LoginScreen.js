@@ -156,7 +156,7 @@ export default function LoginScreen() {
             Quick access accounts
           </Text>
           <Text style={{ color: colors.textMuted }}>
-            `nurse1`, `carestaff1`, and `resident1` use the shared demo passwords documented in the mobile README.
+            Use nurse1, carestaff1, or resident1 with the shared demo passwords documented in the mobile README.
           </Text>
         </View>
       </View>
