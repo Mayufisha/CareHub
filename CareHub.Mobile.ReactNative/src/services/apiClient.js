@@ -115,6 +115,52 @@ export async function getMedications(token) {
   return apiRequest("/medications", { method: "GET" }, token);
 }
 
+export async function getLowStockMedications(token) {
+  return apiRequest("/medications/lowstock", { method: "GET" }, token);
+}
+
+export async function createMedication(medication, token) {
+  return apiRequest(
+    "/medications",
+    {
+      method: "POST",
+      body: JSON.stringify(medication)
+    },
+    token
+  );
+}
+
+export async function updateMedication(medicationId, medication, token) {
+  return apiRequest(
+    `/medications/${medicationId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(medication)
+    },
+    token
+  );
+}
+
+export async function deleteMedication(medicationId, token) {
+  return apiRequest(
+    `/medications/${medicationId}`,
+    {
+      method: "DELETE"
+    },
+    token
+  );
+}
+
+export async function adjustMedicationStock(medicationId, delta, token) {
+  return apiRequest(
+    `/medications/${medicationId}/adjustStock?delta=${delta}`,
+    {
+      method: "POST"
+    },
+    token
+  );
+}
+
 export async function getMarEntries(token, query = {}) {
   const params = new URLSearchParams();
   if (query.residentId) params.set("residentId", query.residentId);
