@@ -626,6 +626,10 @@ body,
   line-height: 1.6;
 }
 
+.ai-inline-state {
+  padding: 0.9rem;
+}
+
 @media (max-width: 920px) {
   .app-shell {
     grid-template-columns: 1fr;

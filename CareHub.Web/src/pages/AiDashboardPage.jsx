@@ -49,6 +49,10 @@ const FACILITY_TOOL_CARDS = [
   }
 ];
 
+const TOOL_LABELS = new Map(
+  [...RESIDENT_TOOL_CARDS, ...FACILITY_TOOL_CARDS].map((tool) => [tool.key, tool.title])
+);
+
 function AiDashboardPage({ loading, error, residents = [] }) {
   const [activeTab, setActiveTab] = useState("resident-tools");
   const [selectedResidentId, setSelectedResidentId] = useState("");
@@ -56,6 +60,7 @@ function AiDashboardPage({ loading, error, residents = [] }) {
   const [careQuery, setCareQuery] = useState("");
   const [medicationName, setMedicationName] = useState("");
   const [dosage, setDosage] = useState("");
+  const [responseState, setResponseState] = useState("empty");
   const [response, setResponse] = useState(null);
   const [requestError, setRequestError] = useState("");
   const [activeTool, setActiveTool] = useState("");
@@ -93,24 +98,33 @@ function AiDashboardPage({ loading, error, residents = [] }) {
   }, [residentOptions, selectedResidentId]);
 
   async function runTool(toolKey, request) {
+    setActiveTab("response-center");
+    setResponseState("loading");
+    setResponse(null);
+
     try {
       setActiveTool(toolKey);
       setRequestError("");
       const result = await request();
-      const title =
-        RESIDENT_TOOL_CARDS.find((tool) => tool.key === toolKey)?.title ||
-        FACILITY_TOOL_CARDS.find((tool) => tool.key === toolKey)?.title ||
-        "AI Response";
+      const title = TOOL_LABELS.get(toolKey) || "AI Response";
+      const content = result?.content || result?.Content || "";
+      const disclaimer =
+        result?.disclaimer ||
+        result?.Disclaimer ||
+        "AI-generated output is informational only and must be reviewed by qualified staff.";
 
       setResponse({
         tool: toolKey,
         title,
-        content: result?.content || result?.Content || "",
-        residentName: result?.residentName || result?.ResidentName || ""
+        content,
+        residentName: result?.residentName || result?.ResidentName || "",
+        disclaimer
       });
-      setActiveTab("response-center");
+      setResponseState(content ? "ready" : "empty");
     } catch (err) {
-      setRequestError(err?.message || "AI request failed.");
+      const nextError = err?.message || "AI request failed.";
+      setRequestError(nextError);
+      setResponseState("error");
     } finally {
       setActiveTool("");
     }
@@ -120,6 +134,116 @@ function AiDashboardPage({ loading, error, residents = [] }) {
   const canRunDetectTrends = Boolean(selectedResidentId) && !loading && !error;
   const canRunCareQuery = Boolean(careQuery.trim()) && !loading && !error;
   const canRunMedicationExplain = Boolean(medicationName.trim()) && !loading && !error;
+  const canRunReportDraft = Boolean(selectedResidentId) && !loading && !error;
+  const canRunTrendExplain = Boolean(selectedResidentId) && !loading && !error;
+  const canRunShiftHandoff = !loading && !error;
+
+  function renderToolButton(toolKey) {
+    if (toolKey === "shift-summary") {
+      return (
+        <button
+          type="button"
+          className="ghost-button"
+          onClick={() => runTool(toolKey, () => apiService.aiShiftSummary(selectedResidentId))}
+          disabled={!canRunShiftSummary || activeTool === toolKey}
+        >
+          {activeTool === toolKey ? "Running..." : "Run Tool"}
+        </button>
+      );
+    }
+
+    if (toolKey === "detect-trends") {
+      return (
+        <button
+          type="button"
+          className="ghost-button"
+          onClick={() => runTool(toolKey, () => apiService.aiDetectTrends(selectedResidentId))}
+          disabled={!canRunDetectTrends || activeTool === toolKey}
+        >
+          {activeTool === toolKey ? "Running..." : "Run Tool"}
+        </button>
+      );
+    }
+
+    if (toolKey === "care-query") {
+      return (
+        <button
+          type="button"
+          className="ghost-button"
+          onClick={() =>
+            runTool(toolKey, () => apiService.aiCareQuery(careQuery.trim(), selectedResidentId || null))
+          }
+          disabled={!canRunCareQuery || activeTool === toolKey}
+        >
+          {activeTool === toolKey ? "Running..." : "Run Tool"}
+        </button>
+      );
+    }
+
+    if (toolKey === "report-draft") {
+      return (
+        <button
+          type="button"
+          className="ghost-button"
+          onClick={() => runTool(toolKey, () => apiService.aiReportDraft(selectedResidentId))}
+          disabled={!canRunReportDraft || activeTool === toolKey}
+        >
+          {activeTool === toolKey ? "Running..." : "Run Tool"}
+        </button>
+      );
+    }
+
+    if (toolKey === "medication-explain") {
+      return (
+        <button
+          type="button"
+          className="ghost-button"
+          onClick={() =>
+            runTool(toolKey, () =>
+              apiService.aiMedicationExplain(medicationName.trim(), dosage.trim() || null)
+            )
+          }
+          disabled={!canRunMedicationExplain || activeTool === toolKey}
+        >
+          {activeTool === toolKey ? "Running..." : "Run Tool"}
+        </button>
+      );
+    }
+
+    if (toolKey === "trend-explain") {
+      return (
+        <button
+          type="button"
+          className="ghost-button"
+          onClick={() =>
+            runTool(toolKey, () => apiService.aiTrendExplain(selectedResidentId, Number(trendDays)))
+          }
+          disabled={!canRunTrendExplain || activeTool === toolKey}
+        >
+          {activeTool === toolKey ? "Running..." : "Run Tool"}
+        </button>
+      );
+    }
+
+    if (toolKey === "shift-handoff") {
+      return (
+        <button
+          type="button"
+          className="ghost-button"
+          onClick={() => runTool(toolKey, () => apiService.aiShiftHandoff())}
+          disabled={!canRunShiftHandoff || activeTool === toolKey}
+        >
+          {activeTool === toolKey ? "Running..." : "Run Tool"}
+        </button>
+      );
+    }
+
+    return (
+      <button type="button" className="ghost-button" disabled>
+        Available Soon
+      </button>
+    );
+  }
 
   return (
     <section className="page-shell">
@@ -150,6 +274,11 @@ function AiDashboardPage({ loading, error, residents = [] }) {
                 </select>
               </label>
             </div>
+            {loading ? <p className="empty-state">Loading resident context...</p> : null}
+            {!loading && !error && residentOptions.length === 0 ? (
+              <p className="empty-state">No residents are available for AI resident-specific tools yet.</p>
+            ) : null}
+            {error ? <p className="auth-error">{error}</p> : null}
             <label>
               Care Query
               <textarea
@@ -189,59 +318,7 @@ function AiDashboardPage({ loading, error, residents = [] }) {
                 </div>
                 <p>{tool.description}</p>
                 <div className="action-row">
-                  {tool.key === "shift-summary" ? (
-                    <button
-                      type="button"
-                      className="ghost-button"
-                      onClick={() => runTool(tool.key, () => apiService.aiShiftSummary(selectedResidentId))}
-                      disabled={!canRunShiftSummary || activeTool === tool.key}
-                    >
-                      {activeTool === tool.key ? "Running..." : "Run Tool"}
-                    </button>
-                  ) : null}
-                  {tool.key === "care-query" ? (
-                    <button
-                      type="button"
-                      className="ghost-button"
-                      onClick={() =>
-                        runTool(tool.key, () =>
-                          apiService.aiCareQuery(careQuery.trim(), selectedResidentId || null)
-                        )
-                      }
-                      disabled={!canRunCareQuery || activeTool === tool.key}
-                    >
-                      {activeTool === tool.key ? "Running..." : "Run Tool"}
-                    </button>
-                  ) : null}
-                  {tool.key === "detect-trends" ? (
-                    <button
-                      type="button"
-                      className="ghost-button"
-                      onClick={() => runTool(tool.key, () => apiService.aiDetectTrends(selectedResidentId))}
-                      disabled={!canRunDetectTrends || activeTool === tool.key}
-                    >
-                      {activeTool === tool.key ? "Running..." : "Run Tool"}
-                    </button>
-                  ) : null}
-                  {tool.key === "medication-explain" ? (
-                    <button
-                      type="button"
-                      className="ghost-button"
-                      onClick={() =>
-                        runTool(tool.key, () =>
-                          apiService.aiMedicationExplain(medicationName.trim(), dosage.trim() || null)
-                        )
-                      }
-                      disabled={!canRunMedicationExplain || activeTool === tool.key}
-                    >
-                      {activeTool === tool.key ? "Running..." : "Run Tool"}
-                    </button>
-                  ) : null}
-                  {!["shift-summary", "detect-trends", "care-query", "medication-explain"].includes(tool.key) ? (
-                    <button type="button" className="ghost-button" disabled>
-                      Available Soon
-                    </button>
-                  ) : null}
+                  {renderToolButton(tool.key)}
                 </div>
               </article>
             ))}
@@ -254,11 +331,7 @@ function AiDashboardPage({ loading, error, residents = [] }) {
                   <span className="row-index">AI</span>
                 </div>
                 <p>{tool.description}</p>
-                <div className="action-row">
-                  <button type="button" className="ghost-button" disabled>
-                    Available Soon
-                  </button>
-                </div>
+                <div className="action-row">{renderToolButton(tool.key)}</div>
               </article>
             ))}
         </section>
@@ -273,19 +346,29 @@ function AiDashboardPage({ loading, error, residents = [] }) {
                 Copy
               </button>
             </div>
-            {response ? (
+            {responseState === "loading" ? (
+              <p className="empty-state">Generating AI output for {TOOL_LABELS.get(activeTool) || "selected tool"}...</p>
+            ) : null}
+            {responseState === "error" ? (
+              <article className="card error ai-inline-state">
+                {requestError || "AI output could not be generated for this request."}
+              </article>
+            ) : null}
+            {responseState === "ready" && response ? (
               <>
                 <div className="list-row">
                   <span>{response.title}</span>
                   <small>{response.residentName || "Facility context"}</small>
                 </div>
                 <pre className="ai-response-body">{response.content}</pre>
+                <p className="topbar-meta">{response.disclaimer}</p>
               </>
-            ) : (
+            ) : null}
+            {responseState === "empty" ? (
               <p className="empty-state">
                 No AI response yet. Run one of the resident or facility tools to populate this panel.
               </p>
-            )}
+            ) : null}
           </article>
 
           <article className="card">
