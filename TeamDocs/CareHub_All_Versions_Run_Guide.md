@@ -147,7 +147,7 @@ Expected:
 
 - App installs on the emulator
 - App connects to Metro on port `8081`
-- App talks to API through `http://10.0.2.2:5007/api`
+- App talks to API through the value entered in the mobile login screen `API Base URL` field
 
 ### 6.3 If the app says "Unable to load script"
 
@@ -163,6 +163,21 @@ Fix:
 npm.cmd run android
 ```
 
+If Metro remains unreliable in your environment, you can use a manual Android bundle as a fallback:
+
+```powershell
+cd C:\src\CareHub\CareHub.Mobile.ReactNative
+mkdir .\android\app\src\main\assets -Force
+npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+npm.cmd run android
+```
+
+Important:
+
+- This bypasses Metro for the JavaScript bundle.
+- Regenerate the bundle after JavaScript changes.
+- Do not rely on an old generated bundle while debugging current UI changes.
+
 ### 6.4 Windows native build issue
 
 If Android build fails with `build.ninja still dirty after 100 tries`, use the short path clone and clear native caches:
@@ -177,6 +192,34 @@ Remove-Item -Recurse -Force .\android\app\.cxx -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force .\node_modules\react-native-screens\android\.cxx -ErrorAction SilentlyContinue
 npm.cmd run android
 ```
+
+### 6.5 Mobile API Base URL
+
+The mobile login screen now includes an `API Base URL` field. Use the correct value for the device type you are running.
+
+Android Studio emulator:
+
+```text
+http://10.0.2.2:5007/api
+```
+
+Visual Studio emulator:
+
+```text
+http://192.168.1.134:5007/api
+```
+
+Real Android phone on the same Wi-Fi as the PC:
+
+```text
+http://192.168.1.134:5007/api
+```
+
+Notes:
+
+- Replace `192.168.1.134` if your PC Wi-Fi IP changes.
+- The app persists the last API Base URL you enter.
+- The Android app is configured to allow cleartext HTTP traffic for local development against `http://...:5007`.
 
 ## 7. Seeded Login Accounts
 
