@@ -45,6 +45,20 @@ async function request(path, options = {}) {
   return response.json();
 }
 
+function buildQuery(params = {}) {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") {
+      return;
+    }
+    searchParams.set(key, String(value));
+  });
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
 export const api = {
   get(path) {
     return request(path);
@@ -60,5 +74,56 @@ export const api = {
   },
   postNoBody(path) {
     return request(path, { method: "POST" });
+  }
+};
+
+export const apiService = {
+  getResidents() {
+    return api.get("/residents");
+  },
+  getMedications() {
+    return api.get("/medications");
+  },
+  getObservations() {
+    return api.get("/observations");
+  },
+  getStaffDirectory() {
+    return api.get("/staff/directory");
+  },
+  getMarEntries(params = {}) {
+    return api.get(`/mar${buildQuery(params)}`);
+  },
+  getMarReport(params = {}) {
+    return api.get(`/mar/report${buildQuery(params)}`);
+  },
+  getMedicationOrders() {
+    return api.get("/medicationorders");
+  },
+  createMedicationOrder(body) {
+    return api.post("/medicationorders", body);
+  },
+  updateMedicationOrderStatus(id, body) {
+    return api.put(`/medicationorders/${id}/status`, body);
+  },
+  aiShiftSummary(residentId) {
+    return api.post("/ai/shift-summary", { residentId });
+  },
+  aiDetectTrends(residentId) {
+    return api.post("/ai/detect-trends", { residentId });
+  },
+  aiCareQuery(query, residentId) {
+    return api.post("/ai/care-query", { query, residentId });
+  },
+  aiReportDraft(residentId) {
+    return api.post("/ai/report-draft", { residentId });
+  },
+  aiMedicationExplain(medicationName, dosage) {
+    return api.post("/ai/medication-explain", { medicationName, dosage });
+  },
+  aiShiftHandoff() {
+    return api.post("/ai/shift-handoff", {});
+  },
+  aiTrendExplain(residentId, days) {
+    return api.post("/ai/trend-explain", { residentId, days });
   }
 };
