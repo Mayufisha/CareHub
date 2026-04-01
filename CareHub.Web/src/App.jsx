@@ -681,7 +681,13 @@ function App() {
     }
 
     if (activeSection === "AI Dashboard") {
-      return <AiDashboardPage />;
+      return (
+        <AiDashboardPage
+          loading={loading}
+          error={error}
+          residents={residents}
+        />
+      );
     }
 
     if (activeSection === "Observations") {

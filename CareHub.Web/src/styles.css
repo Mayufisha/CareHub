@@ -618,6 +618,14 @@ body,
   min-height: 110px;
 }
 
+.ai-response-body {
+  margin: 0;
+  white-space: pre-wrap;
+  font: inherit;
+  color: #15343f;
+  line-height: 1.6;
+}
+
 @media (max-width: 920px) {
   .app-shell {
     grid-template-columns: 1fr;

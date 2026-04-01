@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { apiService } from "../api";
 import PageTabs from "../components/PageTabs";
 
 const AI_TABS = [
@@ -48,8 +49,74 @@ const FACILITY_TOOL_CARDS = [
   }
 ];
 
-function AiDashboardPage() {
+function AiDashboardPage({ loading, error, residents = [] }) {
   const [activeTab, setActiveTab] = useState("resident-tools");
+  const [selectedResidentId, setSelectedResidentId] = useState("");
+  const [careQuery, setCareQuery] = useState("");
+  const [medicationName, setMedicationName] = useState("");
+  const [dosage, setDosage] = useState("");
+  const [response, setResponse] = useState(null);
+  const [requestError, setRequestError] = useState("");
+  const [activeTool, setActiveTool] = useState("");
+
+  const residentOptions = useMemo(() => {
+    return residents
+      .map((resident) => {
+        const id = String(resident.id || resident.Id || "");
+        if (!id) {
+          return null;
+        }
+
+        const firstName = resident.firstName || resident.residentFName || resident.ResidentFName || "";
+        const lastName = resident.lastName || resident.residentLName || resident.ResidentLName || "";
+        const room = resident.roomNumber || resident.RoomNumber || resident.room || "";
+
+        return {
+          id,
+          label: `${`${firstName} ${lastName}`.trim() || "Unnamed resident"}${room ? ` • Room ${room}` : ""}`
+        };
+      })
+      .filter(Boolean);
+  }, [residents]);
+
+  useEffect(() => {
+    if (residentOptions.length === 0) {
+      setSelectedResidentId("");
+      return;
+    }
+
+    const hasSelectedResident = residentOptions.some((resident) => resident.id === selectedResidentId);
+    if (!hasSelectedResident) {
+      setSelectedResidentId(residentOptions[0].id);
+    }
+  }, [residentOptions, selectedResidentId]);
+
+  async function runTool(toolKey, request) {
+    try {
+      setActiveTool(toolKey);
+      setRequestError("");
+      const result = await request();
+      const title =
+        RESIDENT_TOOL_CARDS.find((tool) => tool.key === toolKey)?.title ||
+        FACILITY_TOOL_CARDS.find((tool) => tool.key === toolKey)?.title ||
+        "AI Response";
+
+      setResponse({
+        tool: toolKey,
+        title,
+        content: result?.content || result?.Content || "",
+        residentName: result?.residentName || result?.ResidentName || ""
+      });
+      setActiveTab("response-center");
+    } catch (err) {
+      setRequestError(err?.message || "AI request failed.");
+    } finally {
+      setActiveTool("");
+    }
+  }
+
+  const canRunShiftSummary = Boolean(selectedResidentId) && !loading && !error;
+  const canRunCareQuery = Boolean(careQuery.trim()) && !loading && !error;
 
   return (
     <section className="page-shell">
@@ -63,8 +130,13 @@ function AiDashboardPage() {
             <div className="ai-field-grid">
               <label>
                 Resident
-                <select defaultValue="">
+                <select value={selectedResidentId} onChange={(event) => setSelectedResidentId(event.target.value)}>
                   <option value="">Choose resident</option>
+                  {residentOptions.map((resident) => (
+                    <option key={resident.id} value={resident.id}>
+                      {resident.label}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label>
@@ -77,18 +149,32 @@ function AiDashboardPage() {
             </div>
             <label>
               Care Query
-              <textarea rows="4" placeholder="Ask about symptoms, refusals, follow-up items, or recent care activity." />
+              <textarea
+                rows="4"
+                value={careQuery}
+                onChange={(event) => setCareQuery(event.target.value)}
+                placeholder="Ask about symptoms, refusals, follow-up items, or recent care activity."
+              />
             </label>
             <div className="ai-field-grid">
               <label>
                 Medication Name
-                <input placeholder="Medication name" />
+                <input
+                  value={medicationName}
+                  onChange={(event) => setMedicationName(event.target.value)}
+                  placeholder="Medication name"
+                />
               </label>
               <label>
                 Dosage
-                <input placeholder="Dosage (optional)" />
+                <input
+                  value={dosage}
+                  onChange={(event) => setDosage(event.target.value)}
+                  placeholder="Dosage (optional)"
+                />
               </label>
             </div>
+            {requestError ? <p className="auth-error">{requestError}</p> : null}
           </article>
 
           {activeTab === "resident-tools" &&
@@ -100,9 +186,35 @@ function AiDashboardPage() {
                 </div>
                 <p>{tool.description}</p>
                 <div className="action-row">
-                  <button type="button" className="ghost-button">
-                    Open Tool
-                  </button>
+                  {tool.key === "shift-summary" ? (
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => runTool(tool.key, () => apiService.aiShiftSummary(selectedResidentId))}
+                      disabled={!canRunShiftSummary || activeTool === tool.key}
+                    >
+                      {activeTool === tool.key ? "Running..." : "Run Tool"}
+                    </button>
+                  ) : null}
+                  {tool.key === "care-query" ? (
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() =>
+                        runTool(tool.key, () =>
+                          apiService.aiCareQuery(careQuery.trim(), selectedResidentId || null)
+                        )
+                      }
+                      disabled={!canRunCareQuery || activeTool === tool.key}
+                    >
+                      {activeTool === tool.key ? "Running..." : "Run Tool"}
+                    </button>
+                  ) : null}
+                  {!["shift-summary", "care-query"].includes(tool.key) ? (
+                    <button type="button" className="ghost-button" disabled>
+                      Available Soon
+                    </button>
+                  ) : null}
                 </div>
               </article>
             ))}
@@ -116,8 +228,8 @@ function AiDashboardPage() {
                 </div>
                 <p>{tool.description}</p>
                 <div className="action-row">
-                  <button type="button" className="ghost-button">
-                    Open Tool
+                  <button type="button" className="ghost-button" disabled>
+                    Available Soon
                   </button>
                 </div>
               </article>
@@ -134,12 +246,19 @@ function AiDashboardPage() {
                 Copy
               </button>
             </div>
-            <p className="empty-state">
-              No AI response yet. Run one of the resident or facility tools to populate this panel.
-            </p>
-            <p className="topbar-meta">
-              AI-generated output is informational only and must be reviewed by qualified staff.
-            </p>
+            {response ? (
+              <>
+                <div className="list-row">
+                  <span>{response.title}</span>
+                  <small>{response.residentName || "Facility context"}</small>
+                </div>
+                <pre className="ai-response-body">{response.content}</pre>
+              </>
+            ) : (
+              <p className="empty-state">
+                No AI response yet. Run one of the resident or facility tools to populate this panel.
+              </p>
+            )}
           </article>
 
           <article className="card">
