@@ -563,6 +563,11 @@ body,
   font-size: 0.9rem;
 }
 
+.inline-meta {
+  display: block;
+  color: #4f6f79;
+}
+
 .ai-context-card,
 .ai-tool-card,
 .ai-response-card {
