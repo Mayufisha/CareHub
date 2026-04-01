@@ -563,6 +563,61 @@ body,
   font-size: 0.9rem;
 }
 
+.ai-context-card,
+.ai-tool-card,
+.ai-response-card {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.ai-tool-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.ai-tool-header h3,
+.ai-context-card h3,
+.ai-response-card h3 {
+  margin: 0;
+}
+
+.ai-context-card p,
+.ai-tool-card p,
+.ai-response-card p {
+  margin: 0;
+}
+
+.ai-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.7rem;
+}
+
+.ai-context-card label {
+  display: grid;
+  gap: 0.35rem;
+  color: #204954;
+  font-weight: 600;
+}
+
+.ai-context-card input,
+.ai-context-card select,
+.ai-context-card textarea {
+  border: 1px solid #cedfe6;
+  border-radius: 10px;
+  padding: 0.6rem 0.7rem;
+  background: #ffffff;
+  color: #15343f;
+  font: inherit;
+}
+
+.ai-context-card textarea {
+  resize: vertical;
+  min-height: 110px;
+}
+
 @media (max-width: 920px) {
   .app-shell {
     grid-template-columns: 1fr;
