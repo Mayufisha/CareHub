@@ -245,7 +245,10 @@ namespace CareHub
         {
             try
             {
-                using var http= new HttpClient {BaseAddress = new Uri("http://localhost:5007/") };
+                var auth = GetAuthService();
+                var apiBaseUrl = auth?.ApiBaseUrl ?? "https://carehub-production-fae0.up.railway.app/";
+
+                using var http = new HttpClient { BaseAddress = new Uri(apiBaseUrl) };
                 http.Timeout = TimeSpan.FromSeconds(8);
 
                 var health = await http.GetAsync("health");

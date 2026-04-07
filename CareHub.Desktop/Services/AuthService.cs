@@ -20,10 +20,11 @@ namespace CareHub.Services
         public Staff? CurrentUser { get; private set; }
         public string? AccessToken { get; private set; }
         public bool IsLoggedIn => CurrentUser != null;
+        public string ApiBaseUrl => _apiBaseUrl;
 
-        public AuthService(string apiBaseUrl = "http://localhost:5007/")
+        public AuthService(string apiBaseUrl = "https://carehub-production-fae0.up.railway.app/")
         {
-            _apiBaseUrl = apiBaseUrl;
+            _apiBaseUrl = apiBaseUrl.Trim();
         }
 
         /// <summary>

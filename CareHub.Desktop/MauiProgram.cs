@@ -74,7 +74,7 @@ namespace CareHub
             });
 
             // One constant BaseUrl
-            var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5007/";
+            var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://carehub-production-fae0.up.railway.app/";
             var apiBase = new Uri(apiBaseUrl);
 
             // Auth service (needs base URL for API login)
