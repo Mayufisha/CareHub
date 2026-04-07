@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { API_BASE, api, getAuthToken, setAuthToken } from "./api";
+import { API_BASE, api, apiService, getAuthToken, setAuthToken } from "./api";
 import ListToolbar from "./components/ListToolbar";
 import SectionMetaPager from "./components/SectionMetaPager";
+import AiDashboardPage from "./pages/AiDashboardPage";
 import DashboardPage from "./pages/DashboardPage";
 import InventoryPage from "./pages/InventoryPage";
+import MarPage from "./pages/MarPage";
 import ObservationsPage from "./pages/ObservationsPage";
+import OrdersPage from "./pages/OrdersPage";
 import ResidentsPage from "./pages/ResidentsPage";
 import StaffPage from "./pages/StaffPage";
 
@@ -12,13 +15,16 @@ const SECTIONS = [
   { key: "Dashboard", label: "Dashboard" },
   { key: "Residents", label: "Residents" },
   { key: "Inventory", label: "Inventory" },
+  { key: "MAR", label: "MAR" },
+  { key: "Orders", label: "Orders" },
+  { key: "AI Dashboard", label: "AI Dashboard" },
   { key: "Observations", label: "Observations" },
   { key: "Staff", label: "Staff" }
 ];
 
 const ROLE_SECTIONS = {
-  Admin: ["Dashboard", "Residents", "Inventory", "Staff"],
-  Nurse: ["Dashboard", "Residents", "Inventory", "Observations"],
+  Admin: ["Dashboard", "Residents", "Inventory", "Orders", "AI Dashboard", "Staff"],
+  Nurse: ["Dashboard", "Residents", "Inventory", "MAR", "Orders", "AI Dashboard", "Observations"],
   "General CareStaff": ["Dashboard", "Residents", "Observations"],
   Observer: ["Dashboard", "Inventory", "Observations"],
 };
@@ -69,6 +75,8 @@ function App() {
   const [residents, setResidents] = useState([]);
   const [medications, setMedications] = useState([]);
   const [observations, setObservations] = useState([]);
+  const [marEntries, setMarEntries] = useState([]);
+  const [medicationOrders, setMedicationOrders] = useState([]);
   const [staffMembers, setStaffMembers] = useState([]);
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState("name");
@@ -86,6 +94,7 @@ function App() {
     const role = authSession?.role || "";
     return ROLE_SECTIONS[role] || [];
   }, [authSession]);
+  const canAccessAiDashboard = ["Admin", "Nurse"].includes(authSession?.role || "");
 
   useEffect(() => {
     async function bootstrapAuth() {
@@ -122,7 +131,7 @@ function App() {
     setQuery("");
     setCurrentPage(1);
     setPageSize(DEFAULT_PAGE_SIZE);
-    if (activeSection === "Observations") {
+    if (["Observations", "MAR", "Orders"].includes(activeSection)) {
       setSortKey("date");
       setSortDirection("desc");
       return;
@@ -166,6 +175,8 @@ function App() {
     setResidents([]);
     setMedications([]);
     setObservations([]);
+    setMarEntries([]);
+    setMedicationOrders([]);
     setStaffMembers([]);
     setError("");
     setLoginError("");
@@ -202,17 +213,27 @@ function App() {
         const canReadResidents = ["Admin", "Nurse", "General CareStaff", "Observer"].includes(role);
         const canReadInventory = ["Admin", "Nurse", "Observer"].includes(role);
         const canReadObservations = ["Nurse", "General CareStaff", "Observer"].includes(role);
+        const canReadMar = ["Nurse"].includes(role);
+        const canReadOrders = ["Admin", "Nurse"].includes(role);
         const canReadStaffList = ["Admin"].includes(role);
 
-        const [resData, medData, obsData, staffData] = await Promise.all([
-          canReadResidents ? api.get("/residents") : Promise.resolve([]),
-          canReadInventory ? api.get("/medications") : Promise.resolve([]),
-          canReadObservations ? api.get("/observations") : Promise.resolve([]),
-          canReadStaffList ? api.get("/staff/directory") : Promise.resolve([])
+        const [resData, medData, obsData, marData, ordersData, staffData] = await Promise.all([
+          canReadResidents ? apiService.getResidents() : Promise.resolve([]),
+          canReadInventory ? apiService.getMedications() : Promise.resolve([]),
+          canReadObservations ? apiService.getObservations() : Promise.resolve([]),
+          canReadMar
+            ? apiService.getMarEntries({
+                fromUtc: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+              })
+            : Promise.resolve([]),
+          canReadOrders ? apiService.getMedicationOrders() : Promise.resolve([]),
+          canReadStaffList ? apiService.getStaffDirectory() : Promise.resolve([])
         ]);
         setResidents(Array.isArray(resData) ? resData : []);
         setMedications(Array.isArray(medData) ? medData : []);
         setObservations(Array.isArray(obsData) ? obsData : []);
+        setMarEntries(Array.isArray(marData) ? marData : []);
+        setMedicationOrders(Array.isArray(ordersData) ? ordersData : []);
         setStaffMembers(Array.isArray(staffData) ? staffData.map(toStaffListItem) : []);
       } catch (err) {
         if (err.status === 401 || err.status === 403) {
@@ -393,14 +414,143 @@ function App() {
     return displayedObservations.slice(start, start + pageSize);
   }, [displayedObservations, currentPage, pageSize]);
 
+  const displayedMarEntries = useMemo(() => {
+    const residentNameById = new Map(
+      residents.map((resident) => {
+        const id = String(resident.id || resident.Id || "");
+        const first = resident.firstName || resident.residentFName || resident.ResidentFName || "";
+        const last = resident.lastName || resident.residentLName || resident.ResidentLName || "";
+        return [id, `${first} ${last}`.trim() || "Unknown resident"];
+      })
+    );
+
+    const medicationNameById = new Map(
+      medications.map((medication) => [
+        String(medication.id || medication.Id || ""),
+        medication.medName || medication.MedName || "Medication"
+      ])
+    );
+
+    const filtered = marEntries
+      .map((entry) => {
+        const residentId = String(entry.residentId || entry.ResidentId || "");
+        const medicationId = String(entry.medicationId || entry.MedicationId || "");
+        const status = entry.status || entry.Status || "Unknown";
+        const administeredAt = entry.administeredAtUtc || entry.AdministeredAtUtc || "";
+        const timeValue = Date.parse(administeredAt);
+
+        return {
+          ...entry,
+          _residentName: residentNameById.get(residentId) || "Unknown resident",
+          _medicationName: medicationNameById.get(medicationId) || "Medication",
+          _status: status,
+          _timestamp: formatObservationTime(administeredAt),
+          _timeValue: Number.isNaN(timeValue) ? 0 : timeValue
+        };
+      })
+      .filter((entry) => {
+        const term = query.trim().toLowerCase();
+        if (!term) {
+          return true;
+        }
+
+        return (
+          entry._residentName.toLowerCase().includes(term) ||
+          entry._medicationName.toLowerCase().includes(term) ||
+          entry._status.toLowerCase().includes(term)
+        );
+      });
+
+    filtered.sort((a, b) => {
+      if (sortKey === "status") {
+        return a._status.localeCompare(b._status);
+      }
+      if (sortKey === "resident") {
+        return a._residentName.localeCompare(b._residentName);
+      }
+      return a._timeValue - b._timeValue;
+    });
+
+    if (sortDirection === "desc") {
+      filtered.reverse();
+    }
+
+    return filtered;
+  }, [marEntries, medications, query, residents, sortDirection, sortKey]);
+
+  const pagedMarEntries = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return displayedMarEntries.slice(start, start + pageSize);
+  }, [currentPage, displayedMarEntries, pageSize]);
+
+  const displayedOrders = useMemo(() => {
+    const filtered = medicationOrders
+      .map((order) => {
+        const requestedAt = order.requestedAt || order.RequestedAt || "";
+        const timeValue = Date.parse(requestedAt);
+
+        return {
+          ...order,
+          _medicationName:
+            order.medicationName ||
+            order.MedicationName ||
+            medications.find(
+              (medication) => String(medication.id || medication.Id || "") === String(order.medicationId || order.MedicationId || "")
+            )?.medName ||
+            "Medication",
+          _status: order.status || order.Status || "Requested",
+          _requestedBy: order.requestedBy || order.RequestedBy || "Staff",
+          _timestamp: formatObservationTime(requestedAt),
+          _timeValue: Number.isNaN(timeValue) ? 0 : timeValue
+        };
+      })
+      .filter((order) => {
+        const term = query.trim().toLowerCase();
+        if (!term) {
+          return true;
+        }
+
+        return (
+          order._medicationName.toLowerCase().includes(term) ||
+          order._status.toLowerCase().includes(term) ||
+          order._requestedBy.toLowerCase().includes(term)
+        );
+      });
+
+    filtered.sort((a, b) => {
+      if (sortKey === "status") {
+        return a._status.localeCompare(b._status);
+      }
+      if (sortKey === "medication") {
+        return a._medicationName.localeCompare(b._medicationName);
+      }
+      return a._timeValue - b._timeValue;
+    });
+
+    if (sortDirection === "desc") {
+      filtered.reverse();
+    }
+
+    return filtered;
+  }, [medicationOrders, medications, query, sortDirection, sortKey]);
+
+  const pagedOrders = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return displayedOrders.slice(start, start + pageSize);
+  }, [currentPage, displayedOrders, pageSize]);
+
   const activeTotalItems =
     activeSection === "Residents"
       ? displayedResidents.length
       : activeSection === "Inventory"
         ? displayedInventory.length
-        : activeSection === "Observations"
-          ? displayedObservations.length
-          : 0;
+        : activeSection === "MAR"
+          ? displayedMarEntries.length
+          : activeSection === "Orders"
+            ? displayedOrders.length
+            : activeSection === "Observations"
+              ? displayedObservations.length
+              : 0;
 
   const totalPages = Math.max(1, Math.ceil(activeTotalItems / pageSize));
   const lowStockRate =
@@ -410,17 +560,22 @@ function App() {
       ? `${displayedResidents.length} residents in current view`
       : activeSection === "Inventory"
         ? `${displayedInventory.length} inventory items in current view`
-        : activeSection === "Observations"
-          ? `${displayedObservations.length} observations in current view`
-      : activeSection === "Dashboard"
-        ? `${lowStock.length} low stock alerts right now`
-        : authSession?.role === "Observer"
-          ? "Your assigned care team details"
-          : "Staff directory and planning workspace";
+        : activeSection === "MAR"
+          ? `${displayedMarEntries.length} MAR entries in current view`
+          : activeSection === "Orders"
+            ? `${displayedOrders.length} medication orders in current view`
+            : activeSection === "Observations"
+              ? `${displayedObservations.length} observations in current view`
+              : activeSection === "Dashboard"
+                ? `${lowStock.length} low stock alerts right now`
+                : authSession?.role === "Observer"
+                  ? "Your assigned care team details"
+                  : "Staff directory and planning workspace";
   const canExport =
     authSession &&
     activeSection !== "Dashboard" &&
     activeSection !== "Staff" &&
+    activeSection !== "AI Dashboard" &&
     !loading &&
     !error &&
     activeTotalItems > 0;
@@ -473,6 +628,34 @@ function App() {
           med._stock,
           med._reorder,
           med._isLow ? "Yes" : "No"
+        ])
+      );
+      return;
+    }
+    if (activeSection === "MAR") {
+      downloadCsv(
+        "mar.csv",
+        ["Resident", "Medication", "Status", "Administered At", "Recorded By"],
+        displayedMarEntries.map((entry) => [
+          entry._residentName,
+          entry._medicationName,
+          entry._status,
+          entry._timestamp,
+          entry.recordedBy || entry.RecordedBy || "N/A"
+        ])
+      );
+      return;
+    }
+    if (activeSection === "Orders") {
+      downloadCsv(
+        "medication-orders.csv",
+        ["Medication", "Status", "Requested By", "Requested At", "Quantity"],
+        displayedOrders.map((order) => [
+          order._medicationName,
+          order._status,
+          order._requestedBy,
+          order._timestamp,
+          order.requestedQuantity || order.RequestedQuantity || 0
         ])
       );
       return;
@@ -666,6 +849,51 @@ function App() {
       );
     }
 
+    if (activeSection === "MAR") {
+      return (
+        <MarPage
+          loading={loading}
+          error={error}
+          displayedMarEntries={displayedMarEntries}
+          pagedMarEntries={pagedMarEntries}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          renderSectionTools={renderSectionTools}
+          renderSectionMeta={renderSectionMeta}
+        />
+      );
+    }
+
+    if (activeSection === "Orders") {
+      return (
+        <OrdersPage
+          loading={loading}
+          error={error}
+          displayedOrders={displayedOrders}
+          pagedOrders={pagedOrders}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          renderSectionTools={renderSectionTools}
+          renderSectionMeta={renderSectionMeta}
+        />
+      );
+    }
+
+    if (activeSection === "AI Dashboard") {
+      if (!canAccessAiDashboard) {
+        return <article className="card error">AI Dashboard is restricted to Admin and Nurse roles.</article>;
+      }
+
+      return (
+        <AiDashboardPage
+          loading={loading}
+          error={error}
+          residents={residents}
+          authRole={authSession?.role}
+        />
+      );
+    }
+
     if (activeSection === "Observations") {
       return (
         <ObservationsPage
@@ -758,6 +986,9 @@ function App() {
               <span>{section.label}</span>
               {section.key === "Residents" && <small>{residents.length}</small>}
               {section.key === "Inventory" && <small>{medications.length}</small>}
+              {section.key === "MAR" && <small>{marEntries.length}</small>}
+              {section.key === "Orders" && <small>{medicationOrders.length}</small>}
+              {section.key === "AI Dashboard" && <small>AI</small>}
               {section.key === "Observations" && <small>{observations.length}</small>}
               {section.key === "Staff" && authSession.role !== "Observer" && (
                 <small>{staffMembers.length}</small>

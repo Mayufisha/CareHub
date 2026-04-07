@@ -563,6 +563,90 @@ body,
   font-size: 0.9rem;
 }
 
+.inline-meta {
+  display: block;
+  color: #4f6f79;
+}
+
+.ai-context-card,
+.ai-tool-card,
+.ai-response-card {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.ai-tool-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.ai-tool-header h3,
+.ai-context-card h3,
+.ai-response-card h3 {
+  margin: 0;
+}
+
+.ai-context-card p,
+.ai-tool-card p,
+.ai-response-card p {
+  margin: 0;
+}
+
+.ai-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.7rem;
+}
+
+.ai-context-card label {
+  display: grid;
+  gap: 0.35rem;
+  color: #204954;
+  font-weight: 600;
+}
+
+.ai-context-card input,
+.ai-context-card select,
+.ai-context-card textarea {
+  border: 1px solid #cedfe6;
+  border-radius: 10px;
+  padding: 0.6rem 0.7rem;
+  background: #ffffff;
+  color: #15343f;
+  font: inherit;
+}
+
+.ai-context-card textarea {
+  resize: vertical;
+  min-height: 110px;
+}
+
+.ai-response-body {
+  margin: 0;
+  white-space: pre-wrap;
+  font: inherit;
+  color: #15343f;
+  line-height: 1.6;
+  border: 1px solid #dbe8ed;
+  border-radius: 12px;
+  background: #f8fbfc;
+  padding: 1rem;
+}
+
+.ai-inline-state {
+  padding: 0.9rem;
+}
+
+.ai-response-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  color: #365b67;
+}
+
 @media (max-width: 920px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -591,6 +675,70 @@ body,
   .topbar-meta {
     width: 100%;
     order: 3;
+  }
+
+  .content {
+    padding: 0.85rem;
+  }
+
+  .section-tools {
+    position: static;
+  }
+
+  .list-row,
+  .recent-row,
+  .section-meta {
+    align-items: flex-start;
+  }
+
+  .list-row,
+  .recent-row,
+  .list-row-actions,
+  .ai-response-meta {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 640px) {
+  body {
+    overflow: auto;
+  }
+
+  .content {
+    padding: 0.75rem;
+  }
+
+  .card {
+    padding: 1rem;
+  }
+
+  .topbar {
+    align-items: stretch;
+  }
+
+  .topbar-title {
+    justify-content: space-between;
+  }
+
+  .topbar button,
+  .secondary-button,
+  .section-tools select,
+  .section-tools input,
+  .ghost-button {
+    width: 100%;
+  }
+
+  .pager {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .pager select {
+    width: 100%;
+  }
+
+  .page-tabs {
+    padding-bottom: 0.35rem;
   }
 }
 
