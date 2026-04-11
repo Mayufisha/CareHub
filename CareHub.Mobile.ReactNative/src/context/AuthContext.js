@@ -1,10 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
-  API_BASE_URL_STORAGE_KEY,
   login as loginApi,
-  me as meApi,
-  setApiBaseUrl
+  me as meApi
 } from "../services/apiClient";
 
 const AuthContext = createContext(null);
@@ -24,11 +22,6 @@ export function AuthProvider({ children }) {
 
     async function restoreSession() {
       try {
-        const savedApiBaseUrl = await AsyncStorage.getItem(API_BASE_URL_STORAGE_KEY);
-        if (savedApiBaseUrl) {
-          setApiBaseUrl(savedApiBaseUrl);
-        }
-
         const raw = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
         if (!raw) {
           return;

@@ -1,11 +1,12 @@
 import { Platform } from "react-native";
 
 export const API_BASE_URL_STORAGE_KEY = "carehub_mobile_api_base_url";
+export const PUBLIC_API_BASE_URL = "https://carehub-production-fae0.up.railway.app/api";
 
 const API_BASE_BY_PLATFORM = {
-  android: "http://10.0.2.2:5007/api",
-  ios: "http://localhost:5007/api",
-  default: "http://localhost:5007/api"
+  android: PUBLIC_API_BASE_URL,
+  ios: PUBLIC_API_BASE_URL,
+  default: PUBLIC_API_BASE_URL
 };
 
 let apiBaseUrl =

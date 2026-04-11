@@ -3,7 +3,6 @@ import { ActivityIndicator, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import Ionicons from "react-native-vector-icons/Ionicons";
 import { AuthProvider, useAuth } from "./src/context/AuthContext";
 import LoginScreen from "./src/screens/LoginScreen";
 import DashboardScreen from "./src/screens/DashboardScreen";
@@ -17,16 +16,6 @@ import { colors, radii } from "./src/ui/theme";
 
 const Stack = createNativeStackNavigator();
 const Tabs = createBottomTabNavigator();
-
-const TAB_ICONS = {
-  Dashboard: "home-outline",
-  Residents: "people-outline",
-  Observations: "pulse-outline",
-  Medications: "medkit-outline",
-  MAR: "checkbox-outline",
-  Orders: "receipt-outline",
-  AI: "sparkles-outline"
-};
 
 function AppTabs() {
   const { user } = useAuth();
@@ -42,8 +31,9 @@ function AppTabs() {
 
   return (
     <Tabs.Navigator
-      screenOptions={({ route }) => ({
+      screenOptions={{
         headerShown: false,
+        tabBarShowLabel: true,
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: "#8a8176",
         tabBarStyle: {
@@ -57,27 +47,21 @@ function AppTabs() {
           borderTopRightRadius: radii.lg
         },
         tabBarItemStyle: {
-          marginHorizontal: 2
-        },
-        tabBarIcon: ({ focused, color, size }) => {
-          const iconName = TAB_ICONS[route.name] || "ellipse-outline";
-          const activeIconName = iconName.replace("-outline", "");
-          return (
-            <Ionicons
-              name={focused ? activeIconName : iconName}
-              size={size}
-              color={color}
-            />
-          );
+          marginHorizontal: 2,
+          paddingTop: 8,
+          borderRadius: radii.md
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: "700"
+          fontWeight: "800",
+          marginTop: 0
         },
+        tabBarIcon: () => null,
+        tabBarIconStyle: { display: "none" },
         sceneStyle: {
           backgroundColor: colors.background
         }
-      })}
+      }}
     >
       <Tabs.Screen name="Dashboard" component={DashboardScreen} />
       {canSeeResidents ? (
