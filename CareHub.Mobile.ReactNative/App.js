@@ -1,5 +1,5 @@
 import React from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Image, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -17,6 +17,16 @@ import { colors, radii } from "./src/ui/theme";
 const Stack = createNativeStackNavigator();
 const Tabs = createBottomTabNavigator();
 
+const TAB_ICONS = {
+  Dashboard: require("./src/assets/icons/home.png"),
+  Residents: require("./src/assets/icons/residence.png"),
+  Observations: require("./src/assets/icons/observation.png"),
+  Medications: require("./src/assets/icons/medication.png"),
+  MAR: require("./src/assets/icons/medical-record.png"),
+  Orders: require("./src/assets/icons/orders.png"),
+  AI: require("./src/assets/icons/ai-assistant.png")
+};
+
 function AppTabs() {
   const { user } = useAuth();
   const role = user?.role || "";
@@ -33,31 +43,49 @@ function AppTabs() {
     <Tabs.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarShowLabel: true,
+        tabBarShowLabel: false,
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: "#8a8176",
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          paddingTop: 10,
-          paddingBottom: 10,
+          paddingTop: 8,
+          paddingBottom: 8,
           paddingHorizontal: 6,
-          height: 70,
+          height: 68,
           borderTopLeftRadius: radii.lg,
           borderTopRightRadius: radii.lg
         },
         tabBarItemStyle: {
           marginHorizontal: 2,
-          paddingTop: 8,
+          paddingVertical: 6,
           borderRadius: radii.md
         },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "800",
-          marginTop: 0
+        tabBarIcon: ({ route, focused }) => {
+          const icon = TAB_ICONS[route.name] || TAB_ICONS.Dashboard;
+          return (
+            <View
+              style={{
+                width: 46,
+                height: 42,
+                borderRadius: radii.md,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: focused ? colors.accentSoft : "transparent"
+              }}
+            >
+              <Image
+                source={icon}
+                resizeMode="contain"
+                style={{
+                  width: focused ? 30 : 27,
+                  height: focused ? 30 : 27,
+                  opacity: focused ? 1 : 0.62
+                }}
+              />
+            </View>
+          );
         },
-        tabBarIcon: () => null,
-        tabBarIconStyle: { display: "none" },
         sceneStyle: {
           backgroundColor: colors.background
         }
