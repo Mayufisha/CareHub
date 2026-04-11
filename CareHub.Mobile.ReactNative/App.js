@@ -61,7 +61,7 @@ function AppTabs() {
           paddingVertical: 6,
           borderRadius: radii.md
         },
-        tabBarIcon: ({ route, focused }) => {
+        tabBarIcon: ({ focused }) => {
           const icon = TAB_ICONS[route.name] || TAB_ICONS.Dashboard;
           return (
             <View
